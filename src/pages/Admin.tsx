@@ -44,36 +44,52 @@ const emptyShipment: Partial<Shipment> = {
 export default function Admin() {
   const [session, setSession] = useState<Session | null>(null)
   const [checking, setChecking] = useState(true)
+  const [recoveryMode, setRecoveryMode] = useState(false)
+  const [recoveryError, setRecoveryError] = useState<string | null>(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+    const params = new URLSearchParams(window.location.search)
+    const isRecovery = params.get('recovery') === '1'
+    const code = params.get('code')
+
+    async function initialise() {
+      if (isRecovery) {
+        setRecoveryMode(true)
+        if (!code) {
+          setRecoveryError('This password-reset link is invalid or has expired. Request a new one.')
+        } else {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+          setSession(data.session)
+          if (error) setRecoveryError('This password-reset link is invalid or has expired. Request a new one.')
+        }
+        // Do not leave the one-time code in browser history.
+        window.history.replaceState({}, '', `${window.location.pathname}${window.location.hash}`)
+        setChecking(false)
+        return
+      }
+
+      const { data } = await supabase.auth.getSession()
       setSession(data.session)
       setChecking(false)
-    })
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+    }
+
+    void initialise()
     return () => sub.subscription.unsubscribe()
   }, [])
 
   if (checking) return null
+  if (recoveryMode) return <Login recoveryError={recoveryError} />
   return session ? <Dashboard /> : <Login />
 }
 
-function Login() {
+function Login({ recoveryError }: { recoveryError?: string | null }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [mode, setMode] = useState<'signin' | 'update-password'>('signin')
   const [newPassword, setNewPassword] = useState('')
-
-  useEffect(() => {
-    // Supabase redirects here with a recovery token in the URL hash after
-    // the person clicks the "reset password" email link.
-    if (window.location.hash.includes('type=recovery')) {
-      setMode('update-password')
-    }
-  }, [])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -93,7 +109,7 @@ function Login() {
     setError(null)
     setNotice(null)
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + window.location.pathname + '#/admin',
+      redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}?recovery=1#/admin`,
     })
     if (error) setError(error.message)
     else setNotice('Check your email for a password reset link.')
@@ -110,7 +126,7 @@ function Login() {
     setLoading(false)
   }
 
-  if (mode === 'update-password') {
+  if (recoveryError !== undefined) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <form
@@ -127,10 +143,11 @@ function Login() {
           }}
         >
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 18, margin: '0 0 4px' }}>Set a password</h1>
+          {recoveryError && <p style={{ color: 'var(--red)', fontSize: 13, margin: 0 }}>{recoveryError}</p>}
           <Input label="New password" value={newPassword} onChange={setNewPassword} type="password" />
           {error && <p style={{ color: 'var(--red)', fontSize: 13, margin: 0 }}>{error}</p>}
           {notice && <p style={{ color: 'var(--teal)', fontSize: 13, margin: 0 }}>{notice}</p>}
-          <button type="submit" disabled={loading} style={btnPrimary}>
+          <button type="submit" disabled={loading || Boolean(recoveryError)} style={btnPrimary}>
             {loading ? 'Saving…' : 'Save password'}
           </button>
         </form>
