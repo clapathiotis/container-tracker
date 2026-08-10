@@ -62,7 +62,18 @@ function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [mode, setMode] = useState<'signin' | 'update-password'>('signin')
+  const [newPassword, setNewPassword] = useState('')
+
+  useEffect(() => {
+    // Supabase redirects here with a recovery token in the URL hash after
+    // the person clicks the "reset password" email link.
+    if (window.location.hash.includes('type=recovery')) {
+      setMode('update-password')
+    }
+  }, [])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -71,6 +82,60 @@ function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) setError(error.message)
     setLoading(false)
+  }
+
+  async function sendResetLink() {
+    if (!email) {
+      setError('Enter your email first, then tap "Forgot password".')
+      return
+    }
+    setLoading(true)
+    setError(null)
+    setNotice(null)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname + '#/admin',
+    })
+    if (error) setError(error.message)
+    else setNotice('Check your email for a password reset link.')
+    setLoading(false)
+  }
+
+  async function updatePassword(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) setError(error.message)
+    else setNotice('Password set. You are signed in.')
+    setLoading(false)
+  }
+
+  if (mode === 'update-password') {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <form
+          onSubmit={updatePassword}
+          style={{
+            background: 'var(--panel)',
+            border: '1px solid var(--line)',
+            borderRadius: 12,
+            padding: 28,
+            width: 320,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+          }}
+        >
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 18, margin: '0 0 4px' }}>Set a password</h1>
+          <Input label="New password" value={newPassword} onChange={setNewPassword} type="password" />
+          {error && <p style={{ color: 'var(--red)', fontSize: 13, margin: 0 }}>{error}</p>}
+          {notice && <p style={{ color: 'var(--teal)', fontSize: 13, margin: 0 }}>{notice}</p>}
+          <button type="submit" disabled={loading} style={btnPrimary}>
+            {loading ? 'Saving…' : 'Save password'}
+          </button>
+        </form>
+      </div>
+    )
   }
 
   return (
@@ -92,8 +157,12 @@ function Login() {
         <Input label="Email" value={email} onChange={setEmail} type="email" />
         <Input label="Password" value={password} onChange={setPassword} type="password" />
         {error && <p style={{ color: 'var(--red)', fontSize: 13, margin: 0 }}>{error}</p>}
+        {notice && <p style={{ color: 'var(--teal)', fontSize: 13, margin: 0 }}>{notice}</p>}
         <button type="submit" disabled={loading} style={btnPrimary}>
           {loading ? 'Signing in…' : 'Sign in'}
+        </button>
+        <button type="button" onClick={sendResetLink} disabled={loading} style={{ ...btnGhost, fontSize: 13 }}>
+          Forgot password
         </button>
       </form>
     </div>
