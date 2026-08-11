@@ -5,6 +5,32 @@ import type { Shipment, ShipmentStop } from '../lib/types'
 
 type StopDraft = Omit<ShipmentStop, 'id' | 'shipment_id'>
 
+// supabase-js puts non-2xx Edge Function responses into `error` (not `data`),
+// and `error.message` is just a generic "non-2xx status code" string — the
+// real reason is in the response body, which we have to read separately.
+async function invokeSync(body: {
+  shipment_id: string
+  container_no: string
+  scac?: string
+  request_type?: string
+}): Promise<{ data: any; error: string | null }> {
+  const { data, error } = await supabase.functions.invoke('sync-container', { body })
+  if (!error) {
+    if (data?.error) return { data: null, error: data.error }
+    return { data, error: null }
+  }
+  const ctx: Response | undefined = (error as any)?.context
+  if (ctx && typeof ctx.json === 'function') {
+    try {
+      const parsed = await ctx.json()
+      return { data: null, error: parsed?.error ?? error.message }
+    } catch {
+      // body wasn't JSON
+    }
+  }
+  return { data: null, error: error.message ?? String(error) }
+}
+
 const emptyStop: StopDraft = {
   seq: 1,
   location: '',
@@ -214,20 +240,25 @@ function Dashboard() {
   }
 
   async function resync(s: Shipment) {
-    if (!s.container_no || !s.carrier_scac) {
-      setSyncMsg('Add a container number and carrier SCAC first (Edit → Route).')
+    if (!s.container_no) {
+      setSyncMsg('Add a container number first (Edit → Route).')
       return
     }
     setSyncingId(s.id)
     setSyncMsg(null)
-    const { data, error } = await supabase.functions.invoke('sync-container', {
-      body: { shipment_id: s.id, container_no: s.container_no, scac: s.carrier_scac },
+    const { data, error: errMsg } = await invokeSync({
+      shipment_id: s.id,
+      container_no: s.container_no,
+      scac: s.carrier_scac || undefined,
     })
     setSyncingId(null)
-    if (error || data?.error) {
-      setSyncMsg(`Sync failed: ${data?.error ?? error?.message}`)
+    if (errMsg) {
+      setSyncMsg(`Sync failed: ${errMsg}`)
     } else {
-      setSyncMsg(`Synced ${data.stopsWritten} movements from the carrier.`)
+      setSyncMsg(
+        `Synced ${data.stopsWritten} movements` +
+          (data.detectedCarrierName ? ` · detected carrier: ${data.detectedCarrierName}` : ''),
+      )
       refresh()
     }
   }
@@ -332,7 +363,9 @@ function Dashboard() {
   )
 }
 
+const AUTO_DETECT = ''
 const SCACS = [
+  { code: AUTO_DETECT, name: 'Auto-detect from number' },
   { code: 'MAEU', name: 'Maersk' },
   { code: 'MSCU', name: 'MSC' },
   { code: 'CMDU', name: 'CMA CGM' },
@@ -349,7 +382,7 @@ function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => 
   const [reference, setReference] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [containerNo, setContainerNo] = useState('')
-  const [scac, setScac] = useState('MAEU')
+  const [scac, setScac] = useState(AUTO_DETECT)
   const [requestType, setRequestType] = useState<'container' | 'bill_of_lading' | 'booking'>('container')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -367,7 +400,7 @@ function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => 
         reference: reference || containerNo,
         customer_name: customerName || null,
         container_no: requestType === 'container' ? containerNo : null,
-        carrier_scac: scac,
+        carrier_scac: scac || null,
         origin_port: 'Pending…',
         destination_port: 'Pending…',
         status: 'in_transit',
@@ -381,16 +414,26 @@ function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => 
       return
     }
 
-    setStep('Contacting carrier via Terminal49 — this can take up to 30s…')
-    const { data, error: fnErr } = await supabase.functions.invoke('sync-container', {
-      body: { shipment_id: shipment.id, container_no: containerNo, scac, request_type: requestType },
+    setStep(
+      scac
+        ? 'Contacting carrier via Terminal49 — this can take up to 30s…'
+        : 'Auto-detecting carrier, then contacting them via Terminal49 — this can take up to 30s…',
+    )
+    const { data, error: errMsg } = await invokeSync({
+      shipment_id: shipment.id,
+      container_no: containerNo,
+      scac: scac || undefined,
+      request_type: requestType,
     })
 
     setLoading(false)
-    if (fnErr || data?.error) {
-      setError(data?.error ?? fnErr?.message ?? 'Sync failed')
+    if (errMsg) {
+      setError(errMsg)
       setStep(null)
       return
+    }
+    if (data?.detectedCarrierName) {
+      setStep(`Detected carrier: ${data.detectedCarrierName}. Done.`)
     }
     onDone()
   }
@@ -401,7 +444,7 @@ function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => 
       <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0, marginBottom: 20 }}>
         Pulls the real route and milestones from the carrier via Terminal49. Free tier gives real POL/POD, ETA and
         confirmed milestones; live moving-vessel position isn't available on the free plan, so the map shows the
-        most recent confirmed location instead.
+        most recent confirmed location instead. Don't know the carrier? Leave it on "Auto-detect".
       </p>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <Input label="Reference (optional label)" value={reference} onChange={setReference} />
@@ -418,7 +461,7 @@ function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => 
           onChange={setContainerNo}
         />
         <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--muted)' }}>
-          Carrier
+          Carrier (optional)
           <select
             value={scac}
             onChange={(e) => setScac(e.target.value)}
@@ -426,7 +469,7 @@ function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => 
           >
             {SCACS.map((s) => (
               <option key={s.code} value={s.code}>
-                {s.name} ({s.code})
+                {s.name} {s.code && `(${s.code})`}
               </option>
             ))}
           </select>
