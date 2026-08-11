@@ -6,6 +6,7 @@ export interface Shipment {
   reference: string
   customer_name: string | null
   carrier: string | null
+  carrier_scac: string | null
   container_no: string | null
   container_type: string | null
   booking_no: string | null
@@ -24,6 +25,8 @@ export interface Shipment {
   current_lat: number | null
   current_lng: number | null
   current_location: string | null
+  t49_shipment_id: string | null
+  last_synced_at: string | null
   created_at: string
   updated_at: string
 }

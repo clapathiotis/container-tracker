@@ -21,6 +21,7 @@ const emptyShipment: Partial<Shipment> = {
   reference: '',
   customer_name: '',
   carrier: '',
+  carrier_scac: '',
   container_no: '',
   container_type: '',
   booking_no: '',
@@ -190,7 +191,10 @@ function Dashboard() {
   const [shipments, setShipments] = useState<Shipment[]>([])
   const [editing, setEditing] = useState<Shipment | null>(null)
   const [creating, setCreating] = useState(false)
+  const [tracking, setTracking] = useState(false)
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
+  const [syncingId, setSyncingId] = useState<string | null>(null)
+  const [syncMsg, setSyncMsg] = useState<string | null>(null)
 
   async function refresh() {
     const { data } = await supabase.from('shipments').select('*').order('created_at', { ascending: false })
@@ -207,6 +211,37 @@ function Dashboard() {
     navigator.clipboard.writeText(link(slug))
     setCopiedSlug(slug)
     setTimeout(() => setCopiedSlug(null), 1500)
+  }
+
+  async function resync(s: Shipment) {
+    if (!s.container_no || !s.carrier_scac) {
+      setSyncMsg('Add a container number and carrier SCAC first (Edit → Route).')
+      return
+    }
+    setSyncingId(s.id)
+    setSyncMsg(null)
+    const { data, error } = await supabase.functions.invoke('sync-container', {
+      body: { shipment_id: s.id, container_no: s.container_no, scac: s.carrier_scac },
+    })
+    setSyncingId(null)
+    if (error || data?.error) {
+      setSyncMsg(`Sync failed: ${data?.error ?? error?.message}`)
+    } else {
+      setSyncMsg(`Synced ${data.stopsWritten} movements from the carrier.`)
+      refresh()
+    }
+  }
+
+  if (tracking) {
+    return (
+      <QuickTrack
+        onDone={() => {
+          setTracking(false)
+          refresh()
+        }}
+        onCancel={() => setTracking(false)}
+      />
+    )
   }
 
   if (creating || editing) {
@@ -228,17 +263,26 @@ function Dashboard() {
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22 }}>Shipments</h1>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setCreating(true)} style={btnPrimary}>
-            + New shipment
+          <button onClick={() => setTracking(true)} style={btnPrimary}>
+            + Track a container
+          </button>
+          <button onClick={() => setCreating(true)} style={btnGhost}>
+            + Manual entry
           </button>
           <button onClick={() => supabase.auth.signOut()} style={btnGhost}>
             Sign out
           </button>
         </div>
       </div>
+
+      {syncMsg && (
+        <p style={{ color: syncMsg.startsWith('Sync failed') ? 'var(--red)' : 'var(--teal)', fontSize: 13, marginTop: -8 }}>
+          {syncMsg}
+        </p>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {shipments.length === 0 && <p style={{ color: 'var(--muted)' }}>No shipments yet.</p>}
@@ -260,10 +304,20 @@ function Dashboard() {
             <div>
               <div style={{ fontWeight: 600 }}>{s.reference}</div>
               <div style={{ color: 'var(--muted)', fontSize: 13 }}>
-                {s.origin_port} → {s.destination_port} · <span className="mono">{s.container_no}</span>
+                {s.origin_port || '—'} → {s.destination_port || '—'} · <span className="mono">{s.container_no}</span>
               </div>
+              {s.last_synced_at && (
+                <div style={{ color: 'var(--muted)', fontSize: 11, marginTop: 2 }}>
+                  Synced {new Date(s.last_synced_at).toLocaleString()}
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
+              {s.container_no && s.carrier_scac && (
+                <button onClick={() => resync(s)} disabled={syncingId === s.id} style={btnGhost}>
+                  {syncingId === s.id ? 'Syncing…' : 'Re-sync'}
+                </button>
+              )}
               <button onClick={() => copyLink(s.slug)} style={btnGhost}>
                 {copiedSlug === s.slug ? 'Copied!' : 'Copy link'}
               </button>
@@ -274,6 +328,122 @@ function Dashboard() {
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+const SCACS = [
+  { code: 'MAEU', name: 'Maersk' },
+  { code: 'MSCU', name: 'MSC' },
+  { code: 'CMDU', name: 'CMA CGM' },
+  { code: 'COSU', name: 'COSCO' },
+  { code: 'HLCU', name: 'Hapag-Lloyd' },
+  { code: 'ONEY', name: 'ONE' },
+  { code: 'EGLV', name: 'Evergreen' },
+  { code: 'YMLU', name: 'Yang Ming' },
+  { code: 'ZIMU', name: 'ZIM' },
+  { code: 'OOLU', name: 'OOCL' },
+]
+
+function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
+  const [reference, setReference] = useState('')
+  const [customerName, setCustomerName] = useState('')
+  const [containerNo, setContainerNo] = useState('')
+  const [scac, setScac] = useState('MAEU')
+  const [requestType, setRequestType] = useState<'container' | 'bill_of_lading' | 'booking'>('container')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [step, setStep] = useState<string | null>(null)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    setStep('Creating shipment…')
+
+    const { data: shipment, error: insErr } = await supabase
+      .from('shipments')
+      .insert({
+        reference: reference || containerNo,
+        customer_name: customerName || null,
+        container_no: requestType === 'container' ? containerNo : null,
+        carrier_scac: scac,
+        origin_port: 'Pending…',
+        destination_port: 'Pending…',
+        status: 'in_transit',
+      })
+      .select()
+      .single()
+
+    if (insErr || !shipment) {
+      setError(insErr?.message ?? 'Could not create shipment')
+      setLoading(false)
+      return
+    }
+
+    setStep('Contacting carrier via Terminal49 — this can take up to 30s…')
+    const { data, error: fnErr } = await supabase.functions.invoke('sync-container', {
+      body: { shipment_id: shipment.id, container_no: containerNo, scac, request_type: requestType },
+    })
+
+    setLoading(false)
+    if (fnErr || data?.error) {
+      setError(data?.error ?? fnErr?.message ?? 'Sync failed')
+      setStep(null)
+      return
+    }
+    onDone()
+  }
+
+  return (
+    <div style={{ maxWidth: 520, margin: '0 auto', padding: 24 }}>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 4 }}>Track a container</h1>
+      <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0, marginBottom: 20 }}>
+        Pulls the real route and milestones from the carrier via Terminal49. Free tier gives real POL/POD, ETA and
+        confirmed milestones; live moving-vessel position isn't available on the free plan, so the map shows the
+        most recent confirmed location instead.
+      </p>
+      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <Input label="Reference (optional label)" value={reference} onChange={setReference} />
+        <Input label="Customer (optional)" value={customerName} onChange={setCustomerName} />
+        <Select
+          label="Number type"
+          value={requestType}
+          onChange={(v) => setRequestType(v as typeof requestType)}
+          options={['container', 'bill_of_lading', 'booking']}
+        />
+        <Input
+          label={requestType === 'container' ? 'Container number' : requestType === 'booking' ? 'Booking number' : 'Bill of lading number'}
+          value={containerNo}
+          onChange={setContainerNo}
+        />
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--muted)' }}>
+          Carrier
+          <select
+            value={scac}
+            onChange={(e) => setScac(e.target.value)}
+            style={{ background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 14 }}
+          >
+            {SCACS.map((s) => (
+              <option key={s.code} value={s.code}>
+                {s.name} ({s.code})
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {step && <p style={{ color: 'var(--muted)', fontSize: 13 }}>{step}</p>}
+        {error && <p style={{ color: 'var(--red)', fontSize: 13 }}>{error}</p>}
+
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <button type="submit" disabled={loading || !containerNo} style={btnPrimary}>
+            {loading ? 'Fetching…' : 'Fetch route'}
+          </button>
+          <button type="button" onClick={onCancel} disabled={loading} style={btnGhost}>
+            Cancel
+          </button>
+        </div>
+      </form>
     </div>
   )
 }
@@ -362,6 +532,7 @@ function ShipmentForm({
         </Row>
         <Row>
           <Input label="Carrier" value={form.carrier ?? ''} onChange={(v) => set('carrier', v)} />
+          <Input label="Carrier SCAC" value={form.carrier_scac ?? ''} onChange={(v) => set('carrier_scac', v)} />
           <Input label="Vessel" value={form.vessel ?? ''} onChange={(v) => set('vessel', v)} />
         </Row>
         <Row>
