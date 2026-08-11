@@ -387,42 +387,52 @@ function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [step, setStep] = useState<string | null>(null)
+  // Once we've created a shipment row for this attempt, remember its id so a
+  // retry (e.g. after "hasn't resolved yet") re-syncs the same row instead of
+  // creating another duplicate shipment.
+  const [pendingShipmentId, setPendingShipmentId] = useState<string | null>(null)
+  const [pendingScac, setPendingScac] = useState<string | undefined>(undefined)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    setStep('Creating shipment…')
 
-    const { data: shipment, error: insErr } = await supabase
-      .from('shipments')
-      .insert({
-        reference: reference || containerNo,
-        customer_name: customerName || null,
-        container_no: requestType === 'container' ? containerNo : null,
-        carrier_scac: scac || null,
-        origin_port: 'Pending…',
-        destination_port: 'Pending…',
-        status: 'in_transit',
-      })
-      .select()
-      .single()
+    let shipmentId = pendingShipmentId
+    if (!shipmentId) {
+      setStep('Creating shipment…')
+      const { data: shipment, error: insErr } = await supabase
+        .from('shipments')
+        .insert({
+          reference: reference || containerNo,
+          customer_name: customerName || null,
+          container_no: requestType === 'container' ? containerNo : null,
+          carrier_scac: scac || null,
+          origin_port: 'Pending…',
+          destination_port: 'Pending…',
+          status: 'in_transit',
+        })
+        .select()
+        .single()
 
-    if (insErr || !shipment) {
-      setError(insErr?.message ?? 'Could not create shipment')
-      setLoading(false)
-      return
+      if (insErr || !shipment) {
+        setError(insErr?.message ?? 'Could not create shipment')
+        setLoading(false)
+        return
+      }
+      shipmentId = shipment.id
+      setPendingShipmentId(shipment.id)
     }
 
     setStep(
-      scac
-        ? 'Contacting carrier via Terminal49 — this can take up to 30s…'
-        : 'Auto-detecting carrier, then contacting them via Terminal49 — this can take up to 30s…',
+      scac || pendingScac
+        ? 'Contacting carrier via Terminal49 — this can take up to 60s…'
+        : 'Auto-detecting carrier, then contacting them via Terminal49 — this can take up to 60s…',
     )
     const { data, error: errMsg } = await invokeSync({
-      shipment_id: shipment.id,
+      shipment_id: shipmentId!,
       container_no: containerNo,
-      scac: scac || undefined,
+      scac: scac || pendingScac || undefined,
       request_type: requestType,
     })
 
@@ -430,6 +440,9 @@ function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => 
     if (errMsg) {
       setError(errMsg)
       setStep(null)
+      // Remember whatever carrier we did manage to detect so a retry doesn't
+      // need to re-run auto-detect (and so the manual dropdown reflects it).
+      if (data?.scac) setPendingScac(data.scac)
       return
     }
     if (data?.detectedCarrierName) {
@@ -474,13 +487,18 @@ function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => 
             ))}
           </select>
         </label>
+        {pendingScac && !scac && (
+          <p style={{ color: 'var(--muted)', fontSize: 12, margin: 0 }}>
+            Carrier detected as {pendingScac} on the last attempt — retry will reuse it.
+          </p>
+        )}
 
         {step && <p style={{ color: 'var(--muted)', fontSize: 13 }}>{step}</p>}
         {error && <p style={{ color: 'var(--red)', fontSize: 13 }}>{error}</p>}
 
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <button type="submit" disabled={loading || !containerNo} style={btnPrimary}>
-            {loading ? 'Fetching…' : 'Fetch route'}
+            {loading ? 'Fetching…' : pendingShipmentId ? 'Retry sync' : 'Fetch route'}
           </button>
           <button type="button" onClick={onCancel} disabled={loading} style={btnGhost}>
             Cancel
