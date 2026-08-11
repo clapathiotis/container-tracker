@@ -1,12 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 :root {
-  --bg: #0a1628;
-  --panel: #0f2137;
-  --panel-2: #142a44;
-  --line: #1c3a56;
-  --text: #e8eef5;
-  --muted: #7891ac;
+  --bg: #16293f;
+  --panel: #1e3854;
+  --panel-2: #274a6c;
+  --line: #3a5c7e;
+  --text: #f3f7fb;
+  --muted: #9fb4cb;
   --amber: #ffb627;
   --teal: #00c2a8;
   --red: #ff5d5d;
@@ -58,7 +58,7 @@ button {
 }
 
 .leaflet-container {
-  background: #071120 !important;
+  background: #dbe4ee !important;
   font-family: var(--font-body) !important;
 }
 

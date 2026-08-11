@@ -8,7 +8,7 @@ function dotIcon(color: string, size = 12, pulse = false) {
     className: '',
     html: `<span style="
       display:block;width:${size}px;height:${size}px;border-radius:50%;
-      background:${color};box-shadow:0 0 0 3px rgba(255,255,255,0.08), 0 0 12px ${color};
+      background:${color};box-shadow:0 0 0 3px rgba(10,22,40,0.35), 0 0 10px ${color};
       ${pulse ? 'position:relative;' : ''}
     ">${pulse ? `<span style="position:absolute;inset:-8px;border-radius:50%;border:2px solid ${color};animation:beacon-pulse 1.8s ease-out infinite;"></span>` : ''}</span>
     <style>
@@ -80,7 +80,7 @@ export default function RouteMap({ shipment, stops }: Props) {
     >
       <TileLayer
         attribution='&copy; OpenStreetMap &copy; CARTO'
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
       />
 
       {sailedPoints.length > 1 && (
@@ -89,7 +89,7 @@ export default function RouteMap({ shipment, stops }: Props) {
       {aheadPoints.length > 1 && (
         <Polyline
           positions={aheadPoints}
-          pathOptions={{ color: '#7891ac', weight: 2, opacity: 0.6, dashArray: '2 8' }}
+          pathOptions={{ color: '#4c6b8a', weight: 2, opacity: 0.75, dashArray: '2 8' }}
         />
       )}
 
