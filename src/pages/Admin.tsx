@@ -13,22 +13,22 @@ async function invokeSync(body: {
   container_no: string
   scac?: string
   request_type?: string
-}): Promise<{ data: any; error: string | null }> {
+}): Promise<{ data: any; error: string | null; debug: any }> {
   const { data, error } = await supabase.functions.invoke('sync-container', { body })
   if (!error) {
-    if (data?.error) return { data: null, error: data.error }
-    return { data, error: null }
+    if (data?.error) return { data: null, error: data.error, debug: data.debug ?? null }
+    return { data, error: null, debug: null }
   }
   const ctx: Response | undefined = (error as any)?.context
   if (ctx && typeof ctx.json === 'function') {
     try {
       const parsed = await ctx.json()
-      return { data: null, error: parsed?.error ?? error.message }
+      return { data: null, error: parsed?.error ?? error.message, debug: parsed?.debug ?? null }
     } catch {
       // body wasn't JSON
     }
   }
-  return { data: null, error: error.message ?? String(error) }
+  return { data: null, error: error.message ?? String(error), debug: null }
 }
 
 const emptyStop: StopDraft = {
@@ -221,6 +221,7 @@ function Dashboard() {
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
   const [syncingId, setSyncingId] = useState<string | null>(null)
   const [syncMsg, setSyncMsg] = useState<string | null>(null)
+  const [syncDebug, setSyncDebug] = useState<any>(null)
 
   async function refresh() {
     const { data } = await supabase.from('shipments').select('*').order('created_at', { ascending: false })
@@ -246,7 +247,8 @@ function Dashboard() {
     }
     setSyncingId(s.id)
     setSyncMsg(null)
-    const { data, error: errMsg } = await invokeSync({
+    setSyncDebug(null)
+    const { data, error: errMsg, debug } = await invokeSync({
       shipment_id: s.id,
       container_no: s.container_no,
       scac: s.carrier_scac || undefined,
@@ -254,6 +256,7 @@ function Dashboard() {
     setSyncingId(null)
     if (errMsg) {
       setSyncMsg(`Sync failed: ${errMsg}`)
+      setSyncDebug(debug)
     } else {
       setSyncMsg(
         `Synced ${data.stopsWritten} movements` +
@@ -313,6 +316,23 @@ function Dashboard() {
         <p style={{ color: syncMsg.startsWith('Sync failed') ? 'var(--red)' : 'var(--teal)', fontSize: 13, marginTop: -8 }}>
           {syncMsg}
         </p>
+      )}
+      {syncDebug && (
+        <pre
+          style={{
+            background: 'var(--panel-2)',
+            border: '1px solid var(--line)',
+            borderRadius: 8,
+            padding: 10,
+            fontSize: 10,
+            color: 'var(--muted)',
+            overflowX: 'auto',
+            marginTop: -8,
+            maxHeight: 260,
+          }}
+        >
+          {JSON.stringify(syncDebug, null, 2)}
+        </pre>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
