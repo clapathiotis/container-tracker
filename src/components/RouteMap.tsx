@@ -28,41 +28,69 @@ interface Props {
 }
 
 export default function RouteMap({ shipment, stops }: Props) {
-  // Collapse consecutive duplicate-location stops into a single route point,
-  // preserving order, for drawing the line.
-  const routePoints: [number, number][] = []
-  const seen: { lat: number; lng: number }[] = []
-  for (const s of stops) {
-    const last = seen[seen.length - 1]
-    if (!last || last.lat !== s.lat || last.lng !== s.lng) {
-      seen.push({ lat: s.lat, lng: s.lng })
-      routePoints.push([s.lat, s.lng])
-    }
-  }
-
   const current =
     shipment.current_lat != null && shipment.current_lng != null
       ? ([shipment.current_lat, shipment.current_lng] as [number, number])
       : null
 
-  // Split route into "sailed" (up to current position, approximated by last
-  // completed stop) and "ahead".
-  const lastCompletedIdx = (() => {
-    let idx = -1
-    stops.forEach((s, i) => {
-      if (s.completed) idx = i
-    })
-    return idx
-  })()
-  const lastCompleted = lastCompletedIdx >= 0 ? stops[lastCompletedIdx] : null
+  // Traqo gives a real route polyline (hundreds of points) instead of the
+  // discrete carrier milestone events Terminal49 provides. When present,
+  // draw that smooth path and split it at the point nearest the live
+  // position; otherwise fall back to the old stop-to-stop straight-line
+  // behavior built from shipment_stops.
+  const hasPolyline = Array.isArray(shipment.route_polyline) && shipment.route_polyline.length > 1
 
-  const sailedPoints = routePoints.slice(
-    0,
-    lastCompleted
-      ? routePoints.findIndex((p) => p[0] === lastCompleted.lat && p[1] === lastCompleted.lng) + 1
-      : 1,
-  )
-  const aheadPoints = routePoints.slice(sailedPoints.length - 1)
+  let routePoints: [number, number][]
+  let sailedPoints: [number, number][]
+  let aheadPoints: [number, number][]
+
+  if (hasPolyline) {
+    routePoints = shipment.route_polyline as [number, number][]
+    let splitIdx = 0
+    if (current) {
+      let best = Infinity
+      routePoints.forEach((p, i) => {
+        const d = (p[0] - current[0]) ** 2 + (p[1] - current[1]) ** 2
+        if (d < best) {
+          best = d
+          splitIdx = i
+        }
+      })
+    }
+    sailedPoints = routePoints.slice(0, splitIdx + 1)
+    aheadPoints = routePoints.slice(splitIdx)
+  } else {
+    // Collapse consecutive duplicate-location stops into a single route
+    // point, preserving order, for drawing the line.
+    routePoints = []
+    const seen: { lat: number; lng: number }[] = []
+    for (const s of stops) {
+      const last = seen[seen.length - 1]
+      if (!last || last.lat !== s.lat || last.lng !== s.lng) {
+        seen.push({ lat: s.lat, lng: s.lng })
+        routePoints.push([s.lat, s.lng])
+      }
+    }
+
+    // Split route into "sailed" (up to current position, approximated by
+    // last completed stop) and "ahead".
+    const lastCompletedIdx = (() => {
+      let idx = -1
+      stops.forEach((s, i) => {
+        if (s.completed) idx = i
+      })
+      return idx
+    })()
+    const lastCompleted = lastCompletedIdx >= 0 ? stops[lastCompletedIdx] : null
+
+    sailedPoints = routePoints.slice(
+      0,
+      lastCompleted
+        ? routePoints.findIndex((p) => p[0] === lastCompleted.lat && p[1] === lastCompleted.lng) + 1
+        : 1,
+    )
+    aheadPoints = routePoints.slice(sailedPoints.length - 1)
+  }
 
   const center = current ?? routePoints[Math.floor(routePoints.length / 2)] ?? [20, 20]
 

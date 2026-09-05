@@ -8,13 +8,16 @@ type StopDraft = Omit<ShipmentStop, 'id' | 'shipment_id'>
 // supabase-js puts non-2xx Edge Function responses into `error` (not `data`),
 // and `error.message` is just a generic "non-2xx status code" string — the
 // real reason is in the response body, which we have to read separately.
-async function invokeSync(body: {
-  shipment_id: string
-  container_no: string
-  scac?: string
-  request_type?: string
-}): Promise<{ data: any; error: string | null; debug: any }> {
-  const { data, error } = await supabase.functions.invoke('sync-container', { body })
+async function invokeSync(
+  body: {
+    shipment_id: string
+    container_no: string
+    scac?: string
+    request_type?: string
+  },
+  fnName: 'sync-container' | 'sync-container-traqo' = 'sync-container',
+): Promise<{ data: any; error: string | null; debug: any }> {
+  const { data, error } = await supabase.functions.invoke(fnName, { body })
   if (!error) {
     if (data?.error) return { data: null, error: data.error, debug: data.debug ?? null }
     return { data, error: null, debug: null }
@@ -266,6 +269,38 @@ function Dashboard() {
     }
   }
 
+  // Traqo sync: separate edge function (sync-container-traqo). Kept as its
+  // own button/handler rather than replacing resync() so both providers can
+  // be tested side by side before committing to one.
+  async function resyncTraqo(s: Shipment) {
+    if (!s.container_no) {
+      setSyncMsg('Add a container number first (Edit → Route).')
+      return
+    }
+    setSyncingId(s.id)
+    setSyncMsg(null)
+    setSyncDebug(null)
+    const { data, error: errMsg, debug } = await invokeSync(
+      {
+        shipment_id: s.id,
+        container_no: s.container_no,
+        scac: s.carrier_scac || undefined,
+      },
+      'sync-container-traqo',
+    )
+    setSyncingId(null)
+    if (errMsg) {
+      setSyncMsg(`Traqo sync failed: ${errMsg}`)
+      setSyncDebug(debug)
+    } else {
+      setSyncMsg(
+        `Traqo synced · ${data.routePoints ?? 0} route points` +
+          (data.detectedCarrierName ? ` · detected carrier: ${data.detectedCarrierName}` : ''),
+      )
+      refresh()
+    }
+  }
+
   if (tracking) {
     return (
       <QuickTrack
@@ -367,6 +402,11 @@ function Dashboard() {
               {s.container_no && s.carrier_scac && (
                 <button onClick={() => resync(s)} disabled={syncingId === s.id} style={btnGhost}>
                   {syncingId === s.id ? 'Syncing…' : 'Re-sync'}
+                </button>
+              )}
+              {s.container_no && s.carrier_scac && (
+                <button onClick={() => resyncTraqo(s)} disabled={syncingId === s.id} style={btnGhost}>
+                  {syncingId === s.id ? 'Syncing…' : 'Re-sync (Traqo)'}
                 </button>
               )}
               <button onClick={() => copyLink(s.slug)} style={btnGhost}>

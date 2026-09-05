@@ -26,6 +26,9 @@ export interface Shipment {
   current_lng: number | null
   current_location: string | null
   t49_shipment_id: string | null
+  route_polyline: [number, number][] | null
+  traqo_shipment_uid: string | null
+  traqo_public_url: string | null
   last_synced_at: string | null
   created_at: string
   updated_at: string
