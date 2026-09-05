@@ -107,8 +107,8 @@ export default function RouteMap({ shipment, stops }: Props) {
       scrollWheelZoom={true}
     >
       <TileLayer
-        attribution='&copy; OpenStreetMap &copy; CARTO'
-        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        attribution='&copy; OpenStreetMap contributors'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
       {sailedPoints.length > 1 && (
