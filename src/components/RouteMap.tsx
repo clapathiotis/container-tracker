@@ -163,6 +163,7 @@ export default function RouteMap({ shipment, stops }: Props) {
         attribution='&copy; OpenStreetMap &copy; CARTO'
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
       />
+      <FitRoute points={[...routePoints, ...(current ? [current] : [])]} />
 
       {sailedPoints.length > 1 && (
         <Polyline positions={sailedPoints} pathOptions={{ color: '#00c2a8', weight: 4, opacity: 1, lineCap: 'round', lineJoin: 'round' }} />
