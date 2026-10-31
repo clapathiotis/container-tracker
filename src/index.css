@@ -317,3 +317,19 @@ table td, table th { border-bottom-color: var(--line) !important; }
  .portal-table-wrap{display:none}.portal-mobile-shipments{display:grid;gap:9px}.portal-mobile-shipment{background:#fff;border:1px solid #e7ecf3;border-radius:11px;padding:13px}.portal-mobile-shipment-top,.portal-mobile-shipment-bottom{display:flex;justify-content:space-between;align-items:center;gap:8px}.portal-mobile-shipment-top>strong{font:700 11px var(--font-mono);color:#233850}.portal-mobile-shipment p{font-size:10px;color:#536780;margin:12px 0}.portal-mobile-shipment p b{color:#9aa8b8;padding:0 5px}.portal-mobile-shipment-bottom small{font-size:9px;color:#8a98aa}.portal-mobile-shipment-bottom a{font-size:10px;color:#2870d4;text-decoration:none;font-weight:600}
  .portal-settings-grid{grid-template-columns:1fr}.portal-settings-card{padding:15px}.portal-preferences{grid-template-columns:1fr 1fr;gap:11px}.portal-profile-fields{grid-template-columns:1fr}
 }
+
+/* Matching operations workspace */
+.admin-dashboard{color:#17283f!important}
+.admin-dashboard>div:first-child{align-items:center!important;padding-bottom:22px;border-bottom:1px solid #e5ebf2}
+.admin-dashboard h1{font:800 25px var(--font-display)!important;letter-spacing:-.05em;color:#172b43}
+.admin-dashboard h2{font:800 17px var(--font-display)!important;color:#1b3049;letter-spacing:-.03em}
+.admin-dashboard>div:nth-child(2)>div{background:#fff!important;border:1px solid #e6ebf2!important;border-radius:12px!important;box-shadow:0 4px 16px #1b365008}
+.admin-dashboard>div:nth-child(2)>div>div:first-child{font-size:9px!important;letter-spacing:.12em;color:#8594a7!important}
+.admin-dashboard>div:nth-child(2)>div>div:last-child{font:800 25px var(--font-display)!important;color:#172b43}
+.admin-dashboard section>div,.admin-dashboard section>div table{border-radius:12px}
+.admin-dashboard section>div{background:#fff!important;border-color:#e6ebf2!important}
+.admin-dashboard table th{font-size:9px!important;letter-spacing:.08em;background:#f8fafc!important;color:#8795a7!important}
+.admin-dashboard table td{font-size:11px}
+.admin-dashboard>div:last-child>div{background:#fff!important;border:1px solid #e6ebf2!important;border-radius:12px!important;box-shadow:0 4px 16px #1b365008}
+.admin-dashboard button{font-size:11px!important}
+@media(max-width:640px){.admin-dashboard{padding:20px 15px!important}.admin-dashboard>div:first-child{align-items:flex-start!important}.admin-dashboard h1{font-size:22px!important}}
