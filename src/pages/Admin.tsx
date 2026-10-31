@@ -225,6 +225,7 @@ function Dashboard() {
   const [tracking, setTracking] = useState(false)
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
   const [syncingId, setSyncingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [syncMsg, setSyncMsg] = useState<string | null>(null)
   const [syncDebug, setSyncDebug] = useState<any>(null)
 
@@ -281,6 +282,25 @@ function Dashboard() {
       ? 'FindTEU tracking request accepted. Initial shipment data should arrive by webhook shortly.'
       : `FindTEU updated ${data?.events ?? 0} events.`)
     refresh()
+  }
+
+  async function deleteShipment(s: Shipment) {
+    const confirmed = window.confirm(
+      `Permanently delete shipment "${s.reference}" (${s.container_no || 'no container number'})? This also deletes its recorded stops, events and order association. This cannot be undone.`,
+    )
+    if (!confirmed) return
+
+    setDeletingId(s.id)
+    setSyncMsg(null)
+    const { error } = await supabase.from('shipments').delete().eq('id', s.id)
+    setDeletingId(null)
+
+    if (error) {
+      setSyncMsg(`Delete failed: ${error.message}`)
+      return
+    }
+    setSyncMsg(`Deleted shipment ${s.reference}.`)
+    await refresh()
   }
 
   async function resync(s: Shipment) {
@@ -467,6 +487,13 @@ function Dashboard() {
               </button>
               <button onClick={() => setEditing(s)} style={btnGhost}>
                 Edit
+              </button>
+              <button
+                onClick={() => deleteShipment(s)}
+                disabled={deletingId === s.id}
+                style={{ ...btnGhost, borderColor: 'var(--red)', color: 'var(--red)' }}
+              >
+                {deletingId === s.id ? 'Deleting…' : 'Delete'}
               </button>
             </div>
           </div>
