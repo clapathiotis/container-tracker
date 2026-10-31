@@ -13,7 +13,8 @@ export default function App() {
         <Route path="/t/:slug" element={<Track />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/account" element={<Account />} />
-        <Route path="/o/:token" element={<PublicOrderTrack />} />\n        <Route path="*" element={<Navigate to="/account" replace />} />
+        <Route path="/o/:token" element={<PublicOrderTrack />} />
+        <Route path="*" element={<Navigate to="/account" replace />} />
       </Routes>
     </HashRouter>
   )
