@@ -62,7 +62,7 @@ const ghost: React.CSSProperties = {
   cursor: 'pointer',
 }
 
-export default function Account() {
+function navigateToPortalSection(id: string) {\n  const target = document.getElementById(id)\n  if (!target) return\n  const top = target.getBoundingClientRect().top + window.scrollY - 76\n  window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })\n}\n\nexport default function Account() {
   const [session, setSession] = useState<Session | null>(null)
   const [checking, setChecking] = useState(true)
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
@@ -248,12 +248,12 @@ export default function Account() {
       <aside className="portal-sidebar">
         <Link to="/" className="portal-brand"><span className="portal-brand-icon">C</span><span>Container<span>Tracker</span></span></Link>
         <div className="portal-nav-label">WORKSPACE</div>
-        <button type="button" className="portal-nav-item active" onClick={() => document.getElementById('dashboard')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span>▦</span> Dashboard</button>
-        <button type="button" className="portal-nav-item" onClick={() => document.getElementById('shipments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span>▤</span> Shipments <small>{shipments.length}</small></button>
-        <button type="button" className="portal-nav-item" onClick={() => document.getElementById('orders')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span>▧</span> Orders</button>
-        <button type="button" className="portal-nav-item" onClick={() => document.getElementById('notifications')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span>♧</span> Notifications</button>
+        <button type="button" className="portal-nav-item active" onClick={() => navigateToPortalSection('dashboard')}><span>▦</span> Dashboard</button>
+        <button type="button" className="portal-nav-item" onClick={() => navigateToPortalSection('shipments')}><span>▤</span> Shipments <small>{shipments.length}</small></button>
+        <button type="button" className="portal-nav-item" onClick={() => navigateToPortalSection('orders')}><span>▧</span> Orders</button>
+        <button type="button" className="portal-nav-item" onClick={() => navigateToPortalSection('notifications')}><span>♧</span> Notifications</button>
         <div className="portal-nav-label portal-nav-bottom">ACCOUNT</div>
-        <button type="button" className="portal-nav-item" onClick={() => document.getElementById('profile')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span>◉</span> Profile & settings</button>
+        <button type="button" className="portal-nav-item" onClick={() => navigateToPortalSection('profile')}><span>◉</span> Profile & settings</button>
         <div className="portal-sidebar-footer"><div className="portal-avatar">{(profile?.company_name || profile?.full_name || session.user.email || 'C').charAt(0).toUpperCase()}</div><div><strong>{profile?.company_name || profile?.full_name || 'Your account'}</strong><small>{session.user.email}</small></div></div>
       </aside>
       <div className="portal-main">
