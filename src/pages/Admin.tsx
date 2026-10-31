@@ -217,7 +217,7 @@ function Login({ recoveryError }: { recoveryError?: string | null }) {
 }
 
 function Dashboard() {
-  const [shipments, setShipments] = useState<Shipment[]>([])
+  const [shipments, setShipments] = useState<Shipment[]>([])\n  const [customerCount, setCustomerCount] = useState(0)\n  const [orders, setOrders] = useState<any[]>([])
   const [editing, setEditing] = useState<Shipment | null>(null)
   const [creating, setCreating] = useState(false)
   const [tracking, setTracking] = useState(false)
@@ -227,8 +227,17 @@ function Dashboard() {
   const [syncDebug, setSyncDebug] = useState<any>(null)
 
   async function refresh() {
-    const { data } = await supabase.from('shipments').select('*').order('created_at', { ascending: false })
-    setShipments((data ?? []) as Shipment[])
+    const [shipmentsRes, customersRes, ordersRes] = await Promise.all([
+      supabase.from('shipments').select('*').order('created_at', { ascending: false }),
+      supabase.from('customers').select('id', { count: 'exact', head: true }),
+      supabase.from('tracking_orders')
+        .select('id, input_reference, input_type, package_code, status, amount_minor, currency, created_at, customers(email, company_name)')
+        .order('created_at', { ascending: false })
+        .limit(25),
+    ])
+    setShipments((shipmentsRes.data ?? []) as Shipment[])
+    setCustomerCount(customersRes.count ?? 0)
+    setOrders(ordersRes.data ?? [])
   }
 
   useEffect(() => {
@@ -316,6 +325,43 @@ function Dashboard() {
           </button>
         </div>
       </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 18 }}>
+        {[
+          ['Customers', String(customerCount)],
+          ['Orders', String(orders.length)],
+          ['Paid orders', String(orders.filter(o => ['paid', 'processing', 'active'].includes(o.status)).length)],
+          ['Tracked shipments', String(shipments.length)],
+        ].map(([label, value]) => (
+          <div key={label} style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 10, padding: 14 }}>
+            <div style={{ color: 'var(--muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 24, marginTop: 5 }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      <section style={{ marginBottom: 22 }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 17 }}>Recent customer orders</h2>
+        {orders.length === 0 ? <p style={{ color: 'var(--muted)', fontSize: 13 }}>No customer orders yet.</p> : (
+          <div style={{ background: 'var(--panel)', border: '1px solid var(--line)', borderRadius: 10, overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+              <thead><tr>{['Customer', 'Reference', 'Type', 'Package', 'Status', 'Amount'].map(h => (
+                <th key={h} style={{ textAlign: 'left', padding: 10, color: 'var(--muted)', borderBottom: '1px solid var(--line)' }}>{h}</th>
+              ))}</tr></thead>
+              <tbody>{orders.map(o => (
+                <tr key={o.id}>
+                  <td style={{ padding: 10 }}>{o.customers?.company_name || o.customers?.email || o.customer_id}</td>
+                  <td style={{ padding: 10 }} className="mono">{o.input_reference}</td>
+                  <td style={{ padding: 10 }}>{o.input_type}</td>
+                  <td style={{ padding: 10 }}>{o.package_code}</td>
+                  <td style={{ padding: 10 }}>{o.status}</td>
+                  <td style={{ padding: 10 }}>{(o.amount_minor / 100).toFixed(2)} {o.currency}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       {syncMsg && (
         <p style={{ color: syncMsg.startsWith('Sync failed') ? 'var(--red)' : 'var(--teal)', fontSize: 13, marginTop: -8 }}>
