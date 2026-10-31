@@ -28,6 +28,13 @@ interface Props {
 }
 
 export default function RouteMap({ shipment, stops }: Props) {
+  // Provider milestones can lack coordinates. Never plot (0, 0): it is
+  // Null Island in the Gulf of Guinea, not a real shipment position.
+  const mappedStops = stops.filter((s) =>
+    Number.isFinite(s.lat) && Number.isFinite(s.lng) &&
+    Math.abs(s.lat) <= 90 && Math.abs(s.lng) <= 180 &&
+    (s.lat !== 0 || s.lng !== 0)
+  )
   const current =
     shipment.current_lat != null && shipment.current_lng != null
       ? ([shipment.current_lat, shipment.current_lng] as [number, number])
@@ -64,7 +71,7 @@ export default function RouteMap({ shipment, stops }: Props) {
     // point, preserving order, for drawing the line.
     routePoints = []
     const seen: { lat: number; lng: number }[] = []
-    for (const s of stops) {
+    for (const s of mappedStops) {
       const last = seen[seen.length - 1]
       if (!last || last.lat !== s.lat || last.lng !== s.lng) {
         seen.push({ lat: s.lat, lng: s.lng })
@@ -76,7 +83,7 @@ export default function RouteMap({ shipment, stops }: Props) {
     // last completed stop) and "ahead".
     const lastCompletedIdx = (() => {
       let idx = -1
-      stops.forEach((s, i) => {
+      mappedStops.forEach((s, i) => {
         if (s.completed) idx = i
       })
       return idx
