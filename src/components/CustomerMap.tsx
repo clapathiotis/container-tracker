@@ -63,7 +63,7 @@ export default function CustomerMap({ shipments, stops }: { shipments: ShipmentP
   if (!positions.length) return null
 
   return (
-    <div style={{ height: 340, width: '100%', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--line)' }}>
+    <div className="customer-map">
       <MapContainer center={positions[0]} zoom={3} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
         <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         <FitAll positions={positions} />
