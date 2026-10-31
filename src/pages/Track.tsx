@@ -36,26 +36,19 @@ export default function Track() {
     let cancelled = false
     async function load() {
       setLoading(true)
-      const { data: sData, error: sErr } = await supabase
-        .from('shipments')
-        .select('*')
-        .eq('slug', slug)
-        .single()
-      if (sErr || !sData) {
+      const { data, error: trackingError } = await supabase.rpc('get_public_tracking', {
+        p_slug: slug ?? '',
+      })
+      if (trackingError || !data?.shipment) {
         if (!cancelled) {
           setError('No shipment found for this link.')
           setLoading(false)
         }
         return
       }
-      const { data: stopsData } = await supabase
-        .from('shipment_stops')
-        .select('*')
-        .eq('shipment_id', sData.id)
-        .order('seq', { ascending: true })
       if (!cancelled) {
-        setShipment(sData as Shipment)
-        setStops((stopsData ?? []) as ShipmentStop[])
+        setShipment(data.shipment as Shipment)
+        setStops((data.stops ?? []) as ShipmentStop[])
         setLoading(false)
       }
     }
