@@ -240,110 +240,48 @@ export default function Account() {
     )
   }
 
+  const activeShipments = shipments.filter(s => !['delivered', 'cancelled'].includes(s.status))
+  const deliveredShipments = shipments.filter(s => s.status === 'delivered')
+  const delayedShipments = shipments.filter(s => s.status === 'delayed')
   return (
-    <div className="customer-shell" style={{ minHeight: '100vh' }}>
-      <header className="customer-header" style={{ borderBottom: '1px solid var(--line)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <Link to="/" style={{ color: 'var(--muted)', textDecoration: 'none', fontSize: 12 }}>Container Tracker</Link>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, margin: '4px 0 0' }}>Your shipments</h1>
-        </div>
-        <button style={ghost} onClick={() => supabase.auth.signOut()}>Sign out</button>
-      </header>
-      <main className="customer-content" style={{ maxWidth: 1100, margin: '0 auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <section style={panel}>
-          <div style={{ color: 'var(--muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Account</div>
-          <h2 style={{ fontSize: 18, margin: '6px 0' }}>{profile?.company_name || profile?.full_name || session.user.email}</h2>
-          <p style={{ color: 'var(--muted)', fontSize: 13, margin: 0 }}>{session.user.email}</p>
-        </section>
-
-        <section>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-            <div>
-              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, margin: 0 }}>Shipment overview</h2>
-              <p style={{ color: 'var(--muted)', fontSize: 13, margin: '4px 0 0' }}>All shipments attached to your paid tracking orders.</p>
-            </div>
-            <span style={{ color: 'var(--muted)', fontSize: 13 }}>{shipments.length} shipment{shipments.length === 1 ? '' : 's'}</span>
-          </div>
-          {shipments.length > 0 && <div style={{ marginBottom: 12 }}>
-            <CustomerMap shipments={shipments} stops={shipmentStops} />
-          </div>}
-          {shipments.length === 0 ? (
-            <div style={{ ...panel, padding: 30, textAlign: 'center' }}>
-              <h3 style={{ margin: '0 0 8px', fontSize: 17 }}>No tracked shipments yet</h3>
-              <p style={{ color: 'var(--muted)', maxWidth: 480, margin: '0 auto', fontSize: 14 }}>
-                Once you place a tracking order, your containers will appear here together with their routes, ETAs and movement history.
-              </p>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
-              {shipments.map(s => (
-                <article key={s.id} style={panel}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <strong>{s.reference}</strong>
-                    <span style={{ color: s.status === 'delayed' ? 'var(--red)' : 'var(--teal)', fontSize: 11, textTransform: 'uppercase' }}>{s.status.replace('_', ' ')}</span>
-                  </div>
-                  <p className="mono" style={{ color: 'var(--muted)', fontSize: 13 }}>{s.container_no || 'Container details pending'}</p>
-                  <p style={{ fontSize: 13 }}>{s.origin_port || 'Origin pending'} → {s.destination_port || 'Destination pending'}</p>
-                  <p style={{ color: 'var(--muted)', fontSize: 12 }}>ETA: {s.current_eta || 'Not available'} · {s.carrier || 'Carrier pending'}</p>
-                  <Link to={`/t/${s.slug}`} style={{ color: 'var(--teal)', fontSize: 13 }}>Open tracking details →</Link>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20 }}>Orders</h2>
-          {orders.length === 0 ? <p style={{ color: 'var(--muted)', fontSize: 13 }}>No orders yet.</p> : (
-            <div style={{ ...panel, padding: 0, overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead><tr>{['Reference','Package','Status','Amount','Date','Tracking link'].map(h => <th key={h} style={{ textAlign: 'left', padding: 12, color: 'var(--muted)', borderBottom: '1px solid var(--line)' }}>{h}</th>)}</tr></thead>
-                <tbody>{orders.map(o => <tr key={o.id}>
-                  <td style={{ padding: 12 }}>{o.input_reference}</td>
-                  <td style={{ padding: 12 }}>{o.package_code}</td>
-                  <td style={{ padding: 12 }}>{o.status}</td>
-                  <td style={{ padding: 12 }}>{(o.amount_minor / 100).toFixed(2)} {o.currency}</td>
-                  <td style={{ padding: 12 }}>{new Date(o.created_at).toLocaleDateString()}</td>
-                  <td style={{ padding: 12 }}>
-                    {orderLinks[o.id] ? <a href={orderLinks[o.id]} target="_blank" rel="noreferrer" style={{ color: 'var(--teal)' }}>Open / copy link</a>
-                      : ['paid','processing','active'].includes(o.status) ? <button style={ghost} disabled={busy} onClick={() => createOrderLink(o.id)}>Create link</button> : '—'}
-                  </td>
-                </tr>)}</tbody>
-              </table>
-            </div>
-          )}
-        </section>
-
-        {error && <p style={{ color: 'var(--red)', fontSize: 13 }}>{error}</p>}
-        {message && <p style={{ color: 'var(--teal)', fontSize: 13 }}>{message}</p>}
-        <section style={panel}>
-          <h2 style={{ fontSize: 17, marginTop: 0 }}>Email notifications</h2>
-          <p style={{ color: 'var(--muted)', fontSize: 13 }}>Choose which shipment updates you want to receive by email.</p>
-          {preferences && <div style={{ display: 'grid', gap: 10 }}>
-            {([
-              ['email_enabled', 'Enable email notifications'],
-              ['eta_change_alerts', 'ETA changes'],
-              ['milestone_alerts', 'Shipment milestones'],
-              ['delay_alerts', 'Delay alerts'],
-            ] as const).map(([key, label]) => (
-              <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13 }}>
-                <input type="checkbox" checked={preferences[key]} onChange={e => setPreferences(p => p ? { ...p, [key]: e.target.checked } : p)} />
-                {label}
-              </label>
-            ))}
-          </div>}
-          <button style={{ ...primary, marginTop: 12 }} disabled={busy || !preferences} onClick={savePreferences}>Save notification settings</button>
-        </section>
-
-        <section style={panel}>
-          <h2 style={{ fontSize: 17, marginTop: 0 }}>Profile details</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
-            <Field label="Full name" value={profile?.full_name ?? ''} onChange={v => setProfile(p => ({ full_name: v, company_name: p?.company_name ?? null }))} />
-            <Field label="Company" value={profile?.company_name ?? ''} onChange={v => setProfile(p => ({ full_name: p?.full_name ?? null, company_name: v }))} />
-          </div>
-          <button style={{ ...primary, marginTop: 12 }} disabled={busy || !profile} onClick={saveProfile}>Save profile</button>
-        </section>
-      </main>
+    <div className="portal">
+      <aside className="portal-sidebar">
+        <Link to="/" className="portal-brand"><span className="portal-brand-icon">C</span><span>Container<span>Tracker</span></span></Link>
+        <div className="portal-nav-label">WORKSPACE</div>
+        <a className="portal-nav-item active" href="#dashboard"><span>▦</span> Dashboard</a>
+        <a className="portal-nav-item" href="#shipments"><span>▤</span> Shipments <small>{shipments.length}</small></a>
+        <a className="portal-nav-item" href="#orders"><span>▧</span> Orders</a>
+        <a className="portal-nav-item" href="#notifications"><span>♧</span> Notifications</a>
+        <div className="portal-nav-label portal-nav-bottom">ACCOUNT</div>
+        <a className="portal-nav-item" href="#profile"><span>◉</span> Profile & settings</a>
+        <div className="portal-sidebar-footer"><div className="portal-avatar">{(profile?.company_name || profile?.full_name || session.user.email || 'C').charAt(0).toUpperCase()}</div><div><strong>{profile?.company_name || profile?.full_name || 'Your account'}</strong><small>{session.user.email}</small></div></div>
+      </aside>
+      <div className="portal-main">
+        <header className="portal-topbar"><div className="portal-breadcrumb">Workspace <span>/</span> <strong>Dashboard</strong></div><div className="portal-top-actions"><span className="portal-secure">● Secure customer portal</span><button className="portal-signout" onClick={() => supabase.auth.signOut()}>Sign out ↗</button></div></header>
+        <main className="portal-content" id="dashboard">
+          <section className="portal-welcome"><div><div className="portal-kicker">CUSTOMER OVERVIEW</div><h1>Welcome back, {profile?.company_name || profile?.full_name || 'there'}.</h1><p>Here’s what’s happening with your shipments today.</p></div><button className="portal-primary" onClick={() => document.getElementById('shipments')?.scrollIntoView({ behavior: 'smooth' })}>＋ Track a container</button></section>
+          <section className="portal-stats">
+            <article className="portal-stat"><span className="portal-stat-icon blue">▣</span><div><small>Active shipments</small><strong>{activeShipments.length}</strong><em>Currently moving</em></div></article>
+            <article className="portal-stat"><span className="portal-stat-icon green">✓</span><div><small>Delivered</small><strong>{deliveredShipments.length}</strong><em>Successfully completed</em></div></article>
+            <article className="portal-stat"><span className="portal-stat-icon red">◷</span><div><small>Delayed</small><strong>{delayedShipments.length}</strong><em>Need your attention</em></div></article>
+            <article className="portal-stat"><span className="portal-stat-icon slate">▤</span><div><small>Total orders</small><strong>{orders.length}</strong><em>Across your account</em></div></article>
+          </section>
+          <section className="portal-section" id="shipments">
+            <div className="portal-section-heading"><div><h2>Your shipments</h2><p>Monitor every container from origin to destination.</p></div><span className="portal-count">{shipments.length} total</span></div>
+            {shipments.length > 0 ? <><div className="portal-map-card"><div className="portal-map-heading"><div><strong>Global shipment map</strong><small>All your active journeys in one view</small></div><span>● Overview</span></div><CustomerMap shipments={shipments} stops={shipmentStops} /></div>
+              <div className="portal-table-wrap"><table className="portal-table"><thead><tr><th>CONTAINER</th><th>ROUTE</th><th>STATUS</th><th>EST. ARRIVAL</th><th>CARRIER</th><th></th></tr></thead><tbody>{shipments.map(s => <tr key={s.id}><td><strong className="portal-container">{s.container_no || s.reference}</strong><small>{s.reference}</small></td><td><strong>{s.origin_port || 'Origin pending'}</strong><span className="portal-route-arrow">→</span><strong>{s.destination_port || 'Destination pending'}</strong></td><td><span className={s.status === 'delayed' ? 'portal-status is-delayed' : s.status === 'delivered' ? 'portal-status is-delivered' : 'portal-status is-transit'}>{s.status.replace('_',' ')}</span></td><td>{s.current_eta ? new Date(s.current_eta + 'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—'}</td><td>{s.carrier || '—'}</td><td><Link className="portal-view-link" to={'/t/' + s.slug}>View details →</Link></td></tr>)}</tbody></table></div>
+              <div className="portal-mobile-shipments">{shipments.map(s => <article className="portal-mobile-shipment" key={s.id}><div className="portal-mobile-shipment-top"><strong>{s.container_no || s.reference}</strong><span className={s.status === 'delayed' ? 'portal-status is-delayed' : s.status === 'delivered' ? 'portal-status is-delivered' : 'portal-status is-transit'}>{s.status.replace('_',' ')}</span></div><p>{s.origin_port || 'Origin pending'} <b>→</b> {s.destination_port || 'Destination pending'}</p><div className="portal-mobile-shipment-bottom"><small>ETA · {s.current_eta || 'Not available'}</small><Link to={'/t/' + s.slug}>Details →</Link></div></article>)}</div></> : <div className="portal-empty"><span>▤</span><strong>No shipments yet</strong><p>Your containers will appear here once a tracking order is active.</p></div>}
+          </section>
+          <section className="portal-section" id="orders"><div className="portal-section-heading"><div><h2>Recent orders</h2><p>View tracking purchases and private sharing links.</p></div></div>
+            {orders.length === 0 ? <div className="portal-empty compact">No orders yet.</div> : <div className="portal-table-wrap"><table className="portal-table"><thead><tr><th>REFERENCE</th><th>PACKAGE</th><th>STATUS</th><th>AMOUNT</th><th>DATE</th><th>TRACKING LINK</th></tr></thead><tbody>{orders.map(o => <tr key={o.id}><td><strong>{o.input_reference}</strong></td><td>{o.package_code}</td><td>{o.status}</td><td>{(o.amount_minor / 100).toFixed(2)} {o.currency}</td><td>{new Date(o.created_at).toLocaleDateString()}</td><td>{orderLinks[o.id] ? <a className="portal-view-link" href={orderLinks[o.id]} target="_blank" rel="noreferrer">Open link ↗</a> : ['paid','processing','active'].includes(o.status) ? <button className="portal-small-button" disabled={busy} onClick={() => createOrderLink(o.id)}>Create link</button> : '—'}</td></tr>)}</tbody></table></div>}
+          </section>
+          {error && <div className="portal-alert error">{error}</div>}{message && <div className="portal-alert">{message}</div>}
+          <section className="portal-settings-grid">
+            <article className="portal-settings-card" id="notifications"><div className="portal-section-heading"><div><h2>Notifications</h2><p>Choose the updates you want by email.</p></div></div>{preferences && <div className="portal-preferences">{([['email_enabled','Email notifications'],['eta_change_alerts','ETA changes'],['milestone_alerts','Shipment milestones'],['delay_alerts','Delay alerts']] as const).map(([key,label]) => <label key={key}><input type="checkbox" checked={preferences[key]} onChange={e => setPreferences(p => p ? {...p,[key]:e.target.checked} : p)} /><span>{label}</span></label>)}</div>}<button className="portal-secondary" disabled={busy || !preferences} onClick={savePreferences}>Save preferences</button></article>
+            <article className="portal-settings-card" id="profile"><div className="portal-section-heading"><div><h2>Profile details</h2><p>Manage your account information.</p></div></div><div className="portal-profile-fields"><Field label="Full name" value={profile?.full_name ?? ''} onChange={v => setProfile(p => ({full_name:v,company_name:p?.company_name ?? null}))} /><Field label="Company" value={profile?.company_name ?? ''} onChange={v => setProfile(p => ({full_name:p?.full_name ?? null,company_name:v}))} /></div><button className="portal-secondary" disabled={busy || !profile} onClick={saveProfile}>Save profile</button></article>
+          </section>
+        </main>
+      </div>
     </div>
   )
 }
