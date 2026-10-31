@@ -36,8 +36,8 @@ export default function Track() {
     let cancelled = false
     async function load() {
       setLoading(true)
-      const { data, error: trackingError } = await supabase.rpc('get_public_tracking', {
-        p_slug: slug ?? '',
+      const { data, error: trackingError } = await supabase.functions.invoke('public-tracking', {
+        body: { slug: slug ?? '' },
       })
       if (trackingError || !data?.shipment) {
         if (!cancelled) {
