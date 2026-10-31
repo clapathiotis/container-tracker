@@ -333,3 +333,8 @@ table td, table th { border-bottom-color: var(--line) !important; }
 .admin-dashboard>div:last-child>div{background:#fff!important;border:1px solid #e6ebf2!important;border-radius:12px!important;box-shadow:0 4px 16px #1b365008}
 .admin-dashboard button{font-size:11px!important}
 @media(max-width:640px){.admin-dashboard{padding:20px 15px!important}.admin-dashboard>div:first-child{align-items:flex-start!important}.admin-dashboard h1{font-size:22px!important}}
+
+/* Sidebar navigation controls must look and behave like links without changing HashRouter routes */
+.portal-sidebar .portal-nav-item{width:100%;border:0!important;background:transparent!important;text-align:left;cursor:pointer;font-family:inherit;line-height:1.35}
+.portal-sidebar .portal-nav-item.active{background:#edf4ff!important}
+.portal-content [id]{scroll-margin-top:84px}
