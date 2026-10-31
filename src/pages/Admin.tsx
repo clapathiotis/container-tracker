@@ -269,37 +269,7 @@ function Dashboard() {
     }
   }
 
-  // Traqo sync: separate edge function (sync-container-traqo). Kept as its
-  // own button/handler rather than replacing resync() so both providers can
-  // be tested side by side before committing to one.
-  async function resyncTraqo(s: Shipment) {
-    if (!s.container_no) {
-      setSyncMsg('Add a container number first (Edit → Route).')
-      return
-    }
-    setSyncingId(s.id)
-    setSyncMsg(null)
-    setSyncDebug(null)
-    const { data, error: errMsg, debug } = await invokeSync(
-      {
-        shipment_id: s.id,
-        container_no: s.container_no,
-        scac: s.carrier_scac || undefined,
-      },
-      'sync-container-traqo',
-    )
-    setSyncingId(null)
-    if (errMsg) {
-      setSyncMsg(`Traqo sync failed: ${errMsg}`)
-      setSyncDebug(debug)
-    } else {
-      setSyncMsg(
-        `Traqo synced · ${data.routePoints ?? 0} route points` +
-          (data.detectedCarrierName ? ` · detected carrier: ${data.detectedCarrierName}` : ''),
-      )
-      refresh()
-    }
-  }
+
 
   if (tracking) {
     return (
@@ -402,11 +372,6 @@ function Dashboard() {
               {s.container_no && s.carrier_scac && (
                 <button onClick={() => resync(s)} disabled={syncingId === s.id} style={btnGhost}>
                   {syncingId === s.id ? 'Syncing…' : 'Re-sync'}
-                </button>
-              )}
-              {s.container_no && s.carrier_scac && (
-                <button onClick={() => resyncTraqo(s)} disabled={syncingId === s.id} style={btnGhost}>
-                  {syncingId === s.id ? 'Syncing…' : 'Re-sync (Traqo)'}
                 </button>
               )}
               <button onClick={() => copyLink(s.slug)} style={btnGhost}>
