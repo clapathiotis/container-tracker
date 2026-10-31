@@ -254,6 +254,35 @@ function Dashboard() {
     setTimeout(() => setCopiedSlug(null), 1500)
   }
 
+  async function trackWithFindTEU(s: Shipment) {
+    if (!s.container_no) return
+    setSyncingId(s.id)
+    setSyncMsg(null)
+    setSyncDebug(null)
+    const { data, error } = await supabase.functions.invoke('findteu-track', {
+      body: { shipment_id: s.id, container_no: s.container_no },
+    })
+    setSyncingId(null)
+    if (error) {
+      const ctx: Response | undefined = (error as any)?.context
+      let detail = error.message
+      if (ctx && typeof ctx.json === 'function') {
+        try { detail = (await ctx.json())?.error ?? detail } catch { /* ignore */ }
+      }
+      setSyncMsg(`FindTEU failed: ${detail}`)
+      return
+    }
+    if (data?.error) {
+      setSyncMsg(`FindTEU failed: ${data.error}`)
+      setSyncDebug(data.provider_response ?? null)
+      return
+    }
+    setSyncMsg(data?.submitted
+      ? 'FindTEU tracking request accepted. Initial shipment data should arrive by webhook shortly.'
+      : `FindTEU updated ${data?.events ?? 0} events.`)
+    refresh()
+  }
+
   async function resync(s: Shipment) {
     if (!s.container_no) {
       setSyncMsg('Add a container number first (Edit → Route).')
@@ -417,9 +446,14 @@ function Dashboard() {
               )}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
+              {s.container_no && (
+                <button onClick={() => trackWithFindTEU(s)} disabled={syncingId === s.id} style={btnGhost}>
+                  {syncingId === s.id ? 'Submitting…' : 'Track with FindTEU'}
+                </button>
+              )}
               {s.container_no && s.carrier_scac && (
                 <button onClick={() => resync(s)} disabled={syncingId === s.id} style={btnGhost}>
-                  {syncingId === s.id ? 'Syncing…' : 'Re-sync'}
+                  {syncingId === s.id ? 'Syncing…' : 'Re-sync Terminal49'}
                 </button>
               )}
               <button onClick={() => copyLink(s.slug)} style={btnGhost}>
