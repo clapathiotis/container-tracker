@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Home from './pages/Home'
 import Track from './pages/Track'
 import Admin from './pages/Admin'
@@ -13,7 +13,7 @@ export default function App() {
         <Route path="/t/:slug" element={<Track />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="/account" element={<Account />} />
-        <Route path="/o/:token" element={<PublicOrderTrack />} />
+        <Route path="/o/:token" element={<PublicOrderTrack />} />\n        <Route path="*" element={<Navigate to="/account" replace />} />
       </Routes>
     </HashRouter>
   )
