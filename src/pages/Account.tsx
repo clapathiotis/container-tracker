@@ -77,7 +77,7 @@ export default function Account() {
   const [shipments, setShipments] = useState<CustomerShipment[]>([])
   const [shipmentStops, setShipmentStops] = useState<any[]>([])
   const [profile, setProfile] = useState<{ full_name: string | null; company_name: string | null } | null>(null)
-  const [preferences, setPreferences] = useState<{ email_enabled: boolean; eta_change_alerts: boolean; milestone_alerts: boolean; delay_alerts: boolean } | null>(null)
+  const [preferences, setPreferences] = useState<{ email_enabled: boolean; eta_change_alerts: boolean; milestone_alerts: boolean; delay_alerts: boolean } | null>(null)\n  const [orderLinks, setOrderLinks] = useState<Record<string, string>>({})
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -165,6 +165,21 @@ export default function Account() {
     } else {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
       if (signInError) setError(signInError.message)
+    }
+    setBusy(false)
+  }
+
+  async function createOrderLink(orderId: string) {
+    setBusy(true)
+    setError('')
+    const { data, error: linkError } = await supabase.functions.invoke('create-order-link', { body: { order_id: orderId } })
+    if (linkError || !data?.token) {
+      setError(data?.error || linkError?.message || 'Could not create tracking link.')
+    } else {
+      const url = `${window.location.origin}${import.meta.env.BASE_URL}#/o/${data.token}`
+      setOrderLinks(current => ({ ...current, [orderId]: url }))
+      try { await navigator.clipboard.writeText(url) } catch { /* link remains visible for manual copying */ }
+      setMessage('Private consolidated tracking link created.')
     }
     setBusy(false)
   }
@@ -281,13 +296,17 @@ export default function Account() {
           {orders.length === 0 ? <p style={{ color: 'var(--muted)', fontSize: 13 }}>No orders yet.</p> : (
             <div style={{ ...panel, padding: 0, overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead><tr>{['Reference','Package','Status','Amount','Date'].map(h => <th key={h} style={{ textAlign: 'left', padding: 12, color: 'var(--muted)', borderBottom: '1px solid var(--line)' }}>{h}</th>)}</tr></thead>
+                <thead><tr>{['Reference','Package','Status','Amount','Date','Tracking link'].map(h => <th key={h} style={{ textAlign: 'left', padding: 12, color: 'var(--muted)', borderBottom: '1px solid var(--line)' }}>{h}</th>)}</tr></thead>
                 <tbody>{orders.map(o => <tr key={o.id}>
                   <td style={{ padding: 12 }}>{o.input_reference}</td>
                   <td style={{ padding: 12 }}>{o.package_code}</td>
                   <td style={{ padding: 12 }}>{o.status}</td>
                   <td style={{ padding: 12 }}>{(o.amount_minor / 100).toFixed(2)} {o.currency}</td>
                   <td style={{ padding: 12 }}>{new Date(o.created_at).toLocaleDateString()}</td>
+                  <td style={{ padding: 12 }}>
+                    {orderLinks[o.id] ? <a href={orderLinks[o.id]} target="_blank" rel="noreferrer" style={{ color: 'var(--teal)' }}>Open / copy link</a>
+                      : ['paid','processing','active'].includes(o.status) ? <button style={ghost} disabled={busy} onClick={() => createOrderLink(o.id)}>Create link</button> : '—'}
+                  </td>
                 </tr>)}</tbody>
               </table>
             </div>
