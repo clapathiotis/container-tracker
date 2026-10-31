@@ -217,7 +217,9 @@ function Login({ recoveryError }: { recoveryError?: string | null }) {
 }
 
 function Dashboard() {
-  const [shipments, setShipments] = useState<Shipment[]>([])\n  const [customerCount, setCustomerCount] = useState(0)\n  const [orders, setOrders] = useState<any[]>([])
+  const [shipments, setShipments] = useState<Shipment[]>([])
+  const [customerCount, setCustomerCount] = useState(0)
+  const [orders, setOrders] = useState<any[]>([])
   const [editing, setEditing] = useState<Shipment | null>(null)
   const [creating, setCreating] = useState(false)
   const [tracking, setTracking] = useState(false)
