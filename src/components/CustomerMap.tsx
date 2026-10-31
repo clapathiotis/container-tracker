@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { Fragment, useEffect, useMemo } from 'react'
 import { MapContainer, TileLayer, Polyline, Marker, Tooltip, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -77,7 +77,7 @@ export default function CustomerMap({ shipments, stops }: { shipments: ShipmentP
             ? [shipment.current_lat, shipment.current_lng] as [number, number]
             : null
           return (
-            <span key={shipment.id}>
+            <Fragment key={shipment.id}>
               {path.length > 1 && <Polyline positions={path} pathOptions={{ color, weight: 3, opacity: 0.8 }} />}
               {stopsForShipment.map(stop => (
                 <Marker key={stop.id} position={[stop.lat, stop.lng]} icon={pin(color)}>
