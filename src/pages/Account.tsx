@@ -241,7 +241,7 @@ export default function Account() {
   }
 
   return (
-    <div style={{ minHeight: '100vh' }}>
+    <div className="customer-shell" style={{ minHeight: '100vh' }}>
       <header className="customer-header" style={{ borderBottom: '1px solid var(--line)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <Link to="/" style={{ color: 'var(--muted)', textDecoration: 'none', fontSize: 12 }}>Container Tracker</Link>
