@@ -76,7 +76,8 @@ export default function Account() {
   const [orders, setOrders] = useState<Order[]>([])
   const [shipments, setShipments] = useState<CustomerShipment[]>([])
   const [shipmentStops, setShipmentStops] = useState<any[]>([])
-  const [profile, setProfile] = useState<{ full_name: string | null; company_name: string | null } | null>(null)\n  const [preferences, setPreferences] = useState<{ email_enabled: boolean; eta_change_alerts: boolean; milestone_alerts: boolean; delay_alerts: boolean } | null>(null)
+  const [profile, setProfile] = useState<{ full_name: string | null; company_name: string | null } | null>(null)
+  const [preferences, setPreferences] = useState<{ email_enabled: boolean; eta_change_alerts: boolean; milestone_alerts: boolean; delay_alerts: boolean } | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -94,7 +95,8 @@ export default function Account() {
     if (!session) {
       setOrders([])
       setShipments([])
-      setProfile(null)\n      setPreferences(null)
+      setProfile(null)
+      setPreferences(null)
       return
     }
     let cancelled = false
@@ -104,9 +106,11 @@ export default function Account() {
         supabase.from('tracking_orders')
           .select('id, input_type, input_reference, package_code, status, amount_minor, currency, created_at')
           .order('created_at', { ascending: false }),
+        supabase.from('notification_preferences').select('email_enabled, eta_change_alerts, milestone_alerts, delay_alerts').eq('customer_id', session!.user.id).maybeSingle(),
       ])
       if (cancelled) return
-      if (profileRes.data) setProfile(profileRes.data)\n      if (preferencesRes.data) setPreferences(preferencesRes.data)
+      if (profileRes.data) setProfile(profileRes.data)
+      if (preferencesRes.data) setPreferences(preferencesRes.data)
       if (ordersRes.error) {
         setError(ordersRes.error.message)
         return
@@ -131,7 +135,14 @@ export default function Account() {
         const shipment = row.shipments as CustomerShipment | null
         if (shipment) unique.set(shipment.id, shipment)
       }
-      const shipmentRows = [...unique.values()]\n      setShipments(shipmentRows)\n      const stopsRes = shipmentRows.length\n        ? await supabase.from('shipment_stops').select('id, shipment_id, location, lat, lng, seq').in('shipment_id', shipmentRows.map(s => s.id)).order('seq', { ascending: true })\n        : { data: [], error: null }\n      if (cancelled) return\n      if (stopsRes.error) setError(stopsRes.error.message)\n      setShipmentStops(stopsRes.data ?? [])
+      const shipmentRows = [...unique.values()]
+      setShipments(shipmentRows)
+      const stopsRes = shipmentRows.length
+        ? await supabase.from('shipment_stops').select('id, shipment_id, location, lat, lng, seq').in('shipment_id', shipmentRows.map(s => s.id)).order('seq', { ascending: true })
+        : { data: [], error: null }
+      if (cancelled) return
+      if (stopsRes.error) setError(stopsRes.error.message)
+      setShipmentStops(stopsRes.data ?? [])
     }
     void load()
     return () => { cancelled = true }
