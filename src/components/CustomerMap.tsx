@@ -63,7 +63,7 @@ export default function CustomerMap({ shipments, stops }: { shipments: ShipmentP
   if (!positions.length) return null
 
   return (
-    <div style={{ height: 420, width: '100%', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--line)' }}>
+    <div style={{ height: 340, width: '100%', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--line)' }}>
       <MapContainer center={positions[0]} zoom={3} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
         <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         <FitAll positions={positions} />
@@ -86,7 +86,7 @@ export default function CustomerMap({ shipments, stops }: { shipments: ShipmentP
               ))}
               {current && (
                 <Marker position={current} icon={pin('#ffb627')}>
-                  <Tooltip permanent>{shipment.container_no || shipment.reference} · {shipment.current_location || 'Last known position'}</Tooltip>
+                  <Tooltip>{shipment.container_no || shipment.reference} · {shipment.current_location || 'Last known position'}</Tooltip>
                 </Marker>
               )}
               {shipment.origin_lat != null && shipment.origin_lng != null && (
