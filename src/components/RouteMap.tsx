@@ -11,7 +11,7 @@ function seaRouteBetween(a: [number, number], b: [number, number]): [number, num
 
   // Beirut / Eastern Mediterranean to India's west coast via Suez and Red Sea.
   if (aLat > 30 && aLat < 36 && aLng > 34 && aLng < 37 && bLat > 8 && bLat < 23 && bLng > 68 && bLng < 76) {
-    return [a, [31.8, 33.5], [29.5, 32.6], [27.0, 恂32.6], [22.5, 37.2], [18.0, 39.5], [15.0, 42.0], [12.5, 45.0], [12.0, 50.0], [14.5, 56.0], [17.5, 62.0], [19.0, 68.0], b]
+    return [a, [31.8, 33.5], [29.5, 32.6], [27.0, 32.6], [22.5, 37.2], [18.0, 39.5], [15.0, 42.0], [12.5, 45.0], [12.0, 50.0], [14.5, 56.0], [17.5, 62.0], [19.0, 68.0], b]
   }
   // West coast India to Fujairah / Gulf of Oman.
   if (aLat > 8 && aLat < 23 && aLng > 68 && aLng < 76 && bLat > 23 && bLat < 27 && bLng > 54 && bLng < 58) {
@@ -130,10 +130,9 @@ export default function RouteMap({ shipment, stops }: Props) {
 
   // Replace straight port-to-port chords with approximate sea-lane corridors
   // for the Eastern Mediterranean / Red Sea / Arabian Sea / Gulf region.
-  routePoints = expandMaritimeRoute(routePoints)
-  if (hasPolyline) {
-    // Preserve provider geometry where supplied; only milestone-derived routes
-    // are expanded using the regional sea-lane guide above.
+  if (!hasPolyline) {
+    sailedPoints = expandMaritimeRoute(sailedPoints)
+    aheadPoints = expandMaritimeRoute(aheadPoints)
   }
 
   const center = current ?? routePoints[Math.floor(routePoints.length / 2)] ?? [20, 20]
