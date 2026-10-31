@@ -123,6 +123,12 @@ function Login({ recoveryError }: { recoveryError?: string | null }) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    const normalizedContainerNo = normalizedContainerNo
+    if (!/^[A-Z]{4}[0-9]{7}$/.test(normalizedContainerNo)) {
+      setError('Enter the complete 11-character ISO 6346 container number (4 letters followed by 7 digits).')
+      setStep(null)
+      return
+    }
     setLoading(true)
     setError(null)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -523,9 +529,9 @@ function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => 
       const { data: shipment, error: insErr } = await supabase
         .from('shipments')
         .insert({
-          reference: reference || containerNo.trim().toUpperCase(),
+          reference: reference || normalizedContainerNo,
           customer_name: customerName || null,
-          container_no: containerNo.trim().toUpperCase(),
+          container_no: normalizedContainerNo,
           tracking_provider: 'findteu',
           origin_port: 'Pending…',
           destination_port: 'Pending…',
@@ -546,7 +552,7 @@ function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => 
 
     setStep('Submitting container to FindTEU…')
     const { data, error: invokeError } = await supabase.functions.invoke('findteu-track', {
-      body: { shipment_id: shipmentId, container_no: containerNo.trim().toUpperCase() },
+      body: { shipment_id: shipmentId, container_no: normalizedContainerNo },
     })
 
     if (invokeError) {
