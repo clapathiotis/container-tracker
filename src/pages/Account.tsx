@@ -241,15 +241,15 @@ export default function Account() {
   }
 
   return (
-    <div style={{ minHeight: '100vh' }}>
-      <header style={{ borderBottom: '1px solid var(--line)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+    <div className="customer-shell" style={{ minHeight: '100vh' }}>
+      <header className="customer-header" style={{ borderBottom: '1px solid var(--line)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <Link to="/" style={{ color: 'var(--muted)', textDecoration: 'none', fontSize: 12 }}>Container Tracker</Link>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, margin: '4px 0 0' }}>Your shipments</h1>
         </div>
         <button style={ghost} onClick={() => supabase.auth.signOut()}>Sign out</button>
       </header>
-      <main style={{ maxWidth: 1100, margin: '0 auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <main className="customer-content" style={{ maxWidth: 1100, margin: '0 auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
         <section style={panel}>
           <div style={{ color: 'var(--muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Account</div>
           <h2 style={{ fontSize: 18, margin: '6px 0' }}>{profile?.company_name || profile?.full_name || session.user.email}</h2>
