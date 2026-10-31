@@ -522,16 +522,10 @@ function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => 
   const [reference, setReference] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [containerNo, setContainerNo] = useState('')
-  const [scac, setScac] = useState(AUTO_DETECT)
-  const [requestType, setRequestType] = useState<'container' | 'bill_of_lading' | 'booking'>('container')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [step, setStep] = useState<string | null>(null)
-  // Once we've created a shipment row for this attempt, remember its id so a
-  // retry (e.g. after "hasn't resolved yet") re-syncs the same row instead of
-  // creating another duplicate shipment.
   const [pendingShipmentId, setPendingShipmentId] = useState<string | null>(null)
-  const [pendingScac, setPendingScac] = useState<string | undefined>(undefined)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -544,10 +538,10 @@ function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => 
       const { data: shipment, error: insErr } = await supabase
         .from('shipments')
         .insert({
-          reference: reference || containerNo,
+          reference: reference || containerNo.trim().toUpperCase(),
           customer_name: customerName || null,
-          container_no: requestType === 'container' ? containerNo : null,
-          carrier_scac: scac || null,
+          container_no: containerNo.trim().toUpperCase(),
+          tracking_provider: 'findteu',
           origin_port: 'Pending…',
           destination_port: 'Pending…',
           status: 'in_transit',
@@ -558,36 +552,40 @@ function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => 
       if (insErr || !shipment) {
         setError(insErr?.message ?? 'Could not create shipment')
         setLoading(false)
+        setStep(null)
         return
       }
       shipmentId = shipment.id
       setPendingShipmentId(shipment.id)
     }
 
-    setStep(
-      scac || pendingScac
-        ? 'Contacting carrier via Terminal49 — this can take up to 60s…'
-        : 'Auto-detecting carrier, then contacting them via Terminal49 — this can take up to 60s…',
-    )
-    const { data, error: errMsg } = await invokeSync({
-      shipment_id: shipmentId!,
-      container_no: containerNo,
-      scac: scac || pendingScac || undefined,
-      request_type: requestType,
+    setStep('Submitting container to FindTEU…')
+    const { data, error: invokeError } = await supabase.functions.invoke('findteu-track', {
+      body: { shipment_id: shipmentId, container_no: containerNo.trim().toUpperCase() },
     })
 
-    setLoading(false)
-    if (errMsg) {
-      setError(errMsg)
-      setStep(null)
-      // Remember whatever carrier we did manage to detect so a retry doesn't
-      // need to re-run auto-detect (and so the manual dropdown reflects it).
-      if (data?.scac) setPendingScac(data.scac)
+    if (invokeError) {
+      const ctx: Response | undefined = (invokeError as any)?.context
+      let detail = invokeError.message
+      if (ctx && typeof ctx.json === 'function') {
+        try { detail = (await ctx.json())?.error ?? detail } catch { /* ignore */ }
+      }
+      setError(detail)
+      setStep('Shipment saved. You can retry the FindTEU request.')
+      setLoading(false)
       return
     }
-    if (data?.detectedCarrierName) {
-      setStep(`Detected carrier: ${data.detectedCarrierName}. Done.`)
+    if (data?.error) {
+      setError(data.error)
+      setStep('Shipment saved. You can retry the FindTEU request.')
+      setLoading(false)
+      return
     }
+
+    setStep(data?.submitted
+      ? 'FindTEU accepted the request. Shipment details will appear when its webhook arrives.'
+      : `FindTEU updated ${data?.events ?? 0} tracking events.`)
+    setLoading(false)
     onDone()
   }
 
@@ -595,54 +593,19 @@ function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => 
     <div style={{ maxWidth: 520, margin: '0 auto', padding: 24 }}>
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 20, marginBottom: 4 }}>Track a container</h1>
       <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 0, marginBottom: 20 }}>
-        Pulls the real route and milestones from the carrier via Terminal49. Free tier gives real POL/POD, ETA and
-        confirmed milestones; live moving-vessel position isn't available on the free plan, so the map shows the
-        most recent confirmed location instead. Don't know the carrier? Leave it on "Auto-detect".
+        Creates a shipment and requests container tracking from FindTEU. Tracking updates are received through its webhook.
       </p>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <Input label="Reference (optional label)" value={reference} onChange={setReference} />
         <Input label="Customer (optional)" value={customerName} onChange={setCustomerName} />
-        <Select
-          label="Number type"
-          value={requestType}
-          onChange={(v) => setRequestType(v as typeof requestType)}
-          options={['container', 'bill_of_lading', 'booking']}
-        />
-        <Input
-          label={requestType === 'container' ? 'Container number' : requestType === 'booking' ? 'Booking number' : 'Bill of lading number'}
-          value={containerNo}
-          onChange={setContainerNo}
-        />
-        <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--muted)' }}>
-          Carrier (optional)
-          <select
-            value={scac}
-            onChange={(e) => setScac(e.target.value)}
-            style={{ background: 'var(--panel-2)', border: '1px solid var(--line)', borderRadius: 6, padding: '8px 10px', color: 'var(--text)', fontSize: 14 }}
-          >
-            {SCACS.map((s) => (
-              <option key={s.code} value={s.code}>
-                {s.name} {s.code && `(${s.code})`}
-              </option>
-            ))}
-          </select>
-        </label>
-        {pendingScac && !scac && (
-          <p style={{ color: 'var(--muted)', fontSize: 12, margin: 0 }}>
-            Carrier detected as {pendingScac} on the last attempt — retry will reuse it.
-          </p>
-        )}
-
+        <Input label="Container number" value={containerNo} onChange={setContainerNo} />
         {step && <p style={{ color: 'var(--muted)', fontSize: 13 }}>{step}</p>}
         {error && <p style={{ color: 'var(--red)', fontSize: 13 }}>{error}</p>}
-
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <button type="submit" disabled={loading || !containerNo} style={btnPrimary}>
-            {loading ? 'Fetching…' : pendingShipmentId ? 'Retry sync' : 'Fetch route'}
+          <button type="submit" disabled={loading || !containerNo.trim()} style={btnPrimary}>
+            {loading ? 'Submitting…' : pendingShipmentId ? 'Retry FindTEU' : 'Track with FindTEU'}
           </button>
-          <button type="button" onClick={onCancel} disabled={loading} style={btnGhost}>
-            Cancel
-          </button>
+          <button type="button" onClick={onCancel} disabled={loading} style={btnGhost}>Cancel</button>
         </div>
       </form>
     </div>
