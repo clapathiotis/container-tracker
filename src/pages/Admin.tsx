@@ -446,6 +446,12 @@ function Dashboard() {
               )}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => window.open(link(s.slug), '_blank', 'noopener,noreferrer')}
+                style={btnGhost}
+              >
+                View map
+              </button>
               {s.container_no && (
                 <button onClick={() => trackWithFindTEU(s)} disabled={syncingId === s.id} style={btnGhost}>
                   {syncingId === s.id ? 'Submitting…' : 'Track with FindTEU'}
