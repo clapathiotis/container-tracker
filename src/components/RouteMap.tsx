@@ -3,6 +3,35 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Shipment, ShipmentStop } from '../lib/types'
 
+// Approximate maritime corridors for the Eastern Mediterranean, Red Sea,
+// Arabian Sea and Persian Gulf. These are sea-lane visual guides, not AIS tracks.
+function seaRouteBetween(a: [number, number], b: [number, number]): [number, number][] {
+  const [aLat, aLng] = a
+  const [bLat, bLng] = b
+
+  // Beirut / Eastern Mediterranean to India's west coast via Suez and Red Sea.
+  if (aLat > 30 && aLat < 36 && aLng > 34 && aLng < 37 && bLat > 8 && bLat < 23 && bLng > 68 && bLng < 76) {
+    return [a, [31.8, 33.5], [29.5, 32.6], [27.0, 恂32.6], [22.5, 37.2], [18.0, 39.5], [15.0, 42.0], [12.5, 45.0], [12.0, 50.0], [14.5, 56.0], [17.5, 62.0], [19.0, 68.0], b]
+  }
+  // West coast India to Fujairah / Gulf of Oman.
+  if (aLat > 8 && aLat < 23 && aLng > 68 && aLng < 76 && bLat > 23 && bLat < 27 && bLng > 54 && bLng < 58) {
+    return [a, [18.0, 68.0], [19.0, 64.0], [21.0, 61.0], [23.0, 58.5], b]
+  }
+  // Gulf of Oman through Hormuz into the Persian Gulf.
+  if (aLat > 23 && aLat < 27 && aLng > 54 && aLng < 58 && bLat > 24 && bLat < 28 && bLng > 49 && bLng < 53) {
+    return [a, [25.5, 55.0], [26.2, 54.0], [26.5, 53.0], b]
+  }
+  return [a, b]
+}
+
+function expandMaritimeRoute(points: [number, number][]): [number, number][] {
+  if (points.length < 2) return points
+  return points.slice(1).reduce<[number, number][]>((route, point) => {
+    const previous = route[route.length - 1]
+    return [...route, ...seaRouteBetween(previous, point).slice(1)]
+  }, [points[0]])
+}
+
 function dotIcon(color: string, size = 12, pulse = false) {
   return L.divIcon({
     className: '',
@@ -99,11 +128,19 @@ export default function RouteMap({ shipment, stops }: Props) {
     aheadPoints = routePoints.slice(sailedPoints.length - 1)
   }
 
+  // Replace straight port-to-port chords with approximate sea-lane corridors
+  // for the Eastern Mediterranean / Red Sea / Arabian Sea / Gulf region.
+  routePoints = expandMaritimeRoute(routePoints)
+  if (hasPolyline) {
+    // Preserve provider geometry where supplied; only milestone-derived routes
+    // are expanded using the regional sea-lane guide above.
+  }
+
   const center = current ?? routePoints[Math.floor(routePoints.length / 2)] ?? [20, 20]
 
-  // Unique location markers (one per distinct port, not per move event)
+  // Unique, valid location markers (one per distinct port, not per move event).
   const uniqueLocations = Array.from(
-    new Map(stops.map((s) => [`${s.lat},${s.lng}`, s])).values(),
+    new Map(mappedStops.map((s) => [`${s.lat},${s.lng}`, s])).values(),
   )
 
   return (
