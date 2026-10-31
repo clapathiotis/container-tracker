@@ -520,6 +520,12 @@ function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => 
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
+    const normalizedContainerNo = containerNo.trim().toUpperCase()
+    if (!/^[A-Z]{4}[0-9]{7}$/.test(normalizedContainerNo)) {
+      setError('Enter the complete 11-character ISO 6346 container number (4 letters followed by 7 digits).')
+      setStep(null)
+      return
+    }
     setLoading(true)
     setError(null)
 
