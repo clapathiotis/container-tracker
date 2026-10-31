@@ -242,7 +242,7 @@ export default function Account() {
 
   return (
     <div style={{ minHeight: '100vh' }}>
-      <header style={{ borderBottom: '1px solid var(--line)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <header className="customer-header" style={{ borderBottom: '1px solid var(--line)', padding: '18px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <Link to="/" style={{ color: 'var(--muted)', textDecoration: 'none', fontSize: 12 }}>Container Tracker</Link>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 24, margin: '4px 0 0' }}>Your shipments</h1>
