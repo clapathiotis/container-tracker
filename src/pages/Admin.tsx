@@ -503,21 +503,6 @@ function Dashboard() {
   )
 }
 
-const AUTO_DETECT = ''
-const SCACS = [
-  { code: AUTO_DETECT, name: 'Auto-detect from number' },
-  { code: 'MAEU', name: 'Maersk' },
-  { code: 'MSCU', name: 'MSC' },
-  { code: 'CMDU', name: 'CMA CGM' },
-  { code: 'COSU', name: 'COSCO' },
-  { code: 'HLCU', name: 'Hapag-Lloyd' },
-  { code: 'ONEY', name: 'ONE' },
-  { code: 'EGLV', name: 'Evergreen' },
-  { code: 'YMLU', name: 'Yang Ming' },
-  { code: 'ZIMU', name: 'ZIM' },
-  { code: 'OOLU', name: 'OOCL' },
-]
-
 function QuickTrack({ onDone, onCancel }: { onDone: () => void; onCancel: () => void }) {
   const [reference, setReference] = useState('')
   const [customerName, setCustomerName] = useState('')
