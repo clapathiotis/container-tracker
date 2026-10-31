@@ -1,4 +1,5 @@
-import { MapContainer, TileLayer, Polyline, Marker, Tooltip, useMap } from 'react-leaflet'\nimport { useEffect } from 'react'
+import { MapContainer, TileLayer, Polyline, Marker, Tooltip, useMap } from 'react-leaflet'
+import { useEffect } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Shipment, ShipmentStop } from '../lib/types'
