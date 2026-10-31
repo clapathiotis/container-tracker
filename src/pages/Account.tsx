@@ -248,12 +248,12 @@ export default function Account() {
       <aside className="portal-sidebar">
         <Link to="/" className="portal-brand"><span className="portal-brand-icon">C</span><span>Container<span>Tracker</span></span></Link>
         <div className="portal-nav-label">WORKSPACE</div>
-        <a className="portal-nav-item active" href="#dashboard"><span>▦</span> Dashboard</a>
-        <a className="portal-nav-item" href="#shipments"><span>▤</span> Shipments <small>{shipments.length}</small></a>
-        <a className="portal-nav-item" href="#orders"><span>▧</span> Orders</a>
-        <a className="portal-nav-item" href="#notifications"><span>♧</span> Notifications</a>
+        <button type="button" className="portal-nav-item active" onClick={() => document.getElementById('dashboard')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span>▦</span> Dashboard</button>
+        <button type="button" className="portal-nav-item" onClick={() => document.getElementById('shipments')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span>▤</span> Shipments <small>{shipments.length}</small></button>
+        <button type="button" className="portal-nav-item" onClick={() => document.getElementById('orders')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span>▧</span> Orders</button>
+        <button type="button" className="portal-nav-item" onClick={() => document.getElementById('notifications')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span>♧</span> Notifications</button>
         <div className="portal-nav-label portal-nav-bottom">ACCOUNT</div>
-        <a className="portal-nav-item" href="#profile"><span>◉</span> Profile & settings</a>
+        <button type="button" className="portal-nav-item" onClick={() => document.getElementById('profile')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><span>◉</span> Profile & settings</button>
         <div className="portal-sidebar-footer"><div className="portal-avatar">{(profile?.company_name || profile?.full_name || session.user.email || 'C').charAt(0).toUpperCase()}</div><div><strong>{profile?.company_name || profile?.full_name || 'Your account'}</strong><small>{session.user.email}</small></div></div>
       </aside>
       <div className="portal-main">
