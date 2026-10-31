@@ -77,7 +77,8 @@ export default function Account() {
   const [shipments, setShipments] = useState<CustomerShipment[]>([])
   const [shipmentStops, setShipmentStops] = useState<any[]>([])
   const [profile, setProfile] = useState<{ full_name: string | null; company_name: string | null } | null>(null)
-  const [preferences, setPreferences] = useState<{ email_enabled: boolean; eta_change_alerts: boolean; milestone_alerts: boolean; delay_alerts: boolean } | null>(null)\n  const [orderLinks, setOrderLinks] = useState<Record<string, string>>({})
+  const [preferences, setPreferences] = useState<{ email_enabled: boolean; eta_change_alerts: boolean; milestone_alerts: boolean; delay_alerts: boolean } | null>(null)
+  const [orderLinks, setOrderLinks] = useState<Record<string, string>>({})
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
