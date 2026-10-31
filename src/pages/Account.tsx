@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import CustomerMap from '../components/CustomerMap'
 
 type Order = {
   id: string
@@ -25,6 +26,14 @@ type CustomerShipment = {
   destination_port: string | null
   current_eta: string | null
   status: string
+  origin_lat: number | null
+  origin_lng: number | null
+  destination_lat: number | null
+  destination_lng: number | null
+  current_lat: number | null
+  current_lng: number | null
+  current_location: string | null
+  route_polyline: [number, number][] | null
 }
 
 const panel: React.CSSProperties = {
@@ -66,6 +75,7 @@ export default function Account() {
   const [error, setError] = useState('')
   const [orders, setOrders] = useState<Order[]>([])
   const [shipments, setShipments] = useState<CustomerShipment[]>([])
+  const [shipmentStops, setShipmentStops] = useState<any[]>([])
   const [profile, setProfile] = useState<{ full_name: string | null; company_name: string | null } | null>(null)
 
   useEffect(() => {
@@ -109,7 +119,7 @@ export default function Account() {
       }
       const linksRes = await supabase
         .from('order_shipments')
-        .select('order_id, shipments(id, slug, reference, container_no, carrier, vessel, origin_port, destination_port, current_eta, status)')
+        .select('order_id, shipments(id, slug, reference, container_no, carrier, vessel, origin_port, destination_port, current_eta, status, origin_lat, origin_lng, destination_lat, destination_lng, current_lat, current_lng, current_location, route_polyline)')
         .in('order_id', nextOrders.map(o => o.id))
       if (cancelled) return
       if (linksRes.error) {
@@ -121,7 +131,7 @@ export default function Account() {
         const shipment = row.shipments as CustomerShipment | null
         if (shipment) unique.set(shipment.id, shipment)
       }
-      setShipments([...unique.values()])
+      const shipmentRows = [...unique.values()]\n      setShipments(shipmentRows)\n      const stopsRes = shipmentRows.length\n        ? await supabase.from('shipment_stops').select('id, shipment_id, location, lat, lng, seq').in('shipment_id', shipmentRows.map(s => s.id)).order('seq', { ascending: true })\n        : { data: [], error: null }\n      if (cancelled) return\n      if (stopsRes.error) setError(stopsRes.error.message)\n      setShipmentStops(stopsRes.data ?? [])
     }
     void load()
     return () => { cancelled = true }
@@ -214,6 +224,9 @@ export default function Account() {
             </div>
             <span style={{ color: 'var(--muted)', fontSize: 13 }}>{shipments.length} shipment{shipments.length === 1 ? '' : 's'}</span>
           </div>
+          {shipments.length > 0 && <div style={{ marginBottom: 12 }}>
+            <CustomerMap shipments={shipments} stops={shipmentStops} />
+          </div>}
           {shipments.length === 0 ? (
             <div style={{ ...panel, padding: 30, textAlign: 'center' }}>
               <h3 style={{ margin: '0 0 8px', fontSize: 17 }}>No tracked shipments yet</h3>
