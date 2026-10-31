@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, Polyline, Marker, Tooltip } from 'react-leaflet'
+import { MapContainer, TileLayer, Polyline, Marker, Tooltip, useMap } from 'react-leaflet'\nimport { useEffect } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { Shipment, ShipmentStop } from '../lib/types'
@@ -32,12 +32,21 @@ function expandMaritimeRoute(points: [number, number][]): [number, number][] {
   }, [points[0]])
 }
 
+function FitRoute({ points }: { points: [number, number][] }) {
+  const map = useMap()
+  useEffect(() => {
+    if (points.length > 1) map.fitBounds(points, { padding: [36, 36], maxZoom: 5, animate: false })
+    else if (points.length === 1) map.setView(points[0], 5, { animate: false })
+  }, [map, points])
+  return null
+}
+
 function dotIcon(color: string, size = 12, pulse = false) {
   return L.divIcon({
     className: '',
     html: `<span style="
       display:block;width:${size}px;height:${size}px;border-radius:50%;
-      background:${color};box-shadow:0 0 0 3px rgba(10,22,40,0.35), 0 0 10px ${color};
+      background:${color};box-shadow:0 0 0 4px rgba(7,20,31,.82), 0 0 18px ${color};border:2px solid rgba(255,255,255,.9);
       ${pulse ? 'position:relative;' : ''}
     ">${pulse ? `<span style="position:absolute;inset:-8px;border-radius:50%;border:2px solid ${color};animation:beacon-pulse 1.8s ease-out infinite;"></span>` : ''}</span>
     <style>
@@ -150,17 +159,17 @@ export default function RouteMap({ shipment, stops }: Props) {
       scrollWheelZoom={true}
     >
       <TileLayer
-        attribution='&copy; OpenStreetMap contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; OpenStreetMap &copy; CARTO'
+        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
       />
 
       {sailedPoints.length > 1 && (
-        <Polyline positions={sailedPoints} pathOptions={{ color: '#00c2a8', weight: 3, opacity: 0.9 }} />
+        <Polyline positions={sailedPoints} pathOptions={{ color: '#00c2a8', weight: 4, opacity: 1, lineCap: 'round', lineJoin: 'round' }} />
       )}
       {aheadPoints.length > 1 && (
         <Polyline
           positions={aheadPoints}
-          pathOptions={{ color: '#4c6b8a', weight: 2, opacity: 0.75, dashArray: '2 8' }}
+          pathOptions={{ color: '#4c6b8a', weight: 3, opacity: 0.72, dashArray: '5 9', lineCap: 'round' }}
         />
       )}
 
