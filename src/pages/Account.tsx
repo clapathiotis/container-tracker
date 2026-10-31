@@ -76,7 +76,7 @@ export default function Account() {
   const [orders, setOrders] = useState<Order[]>([])
   const [shipments, setShipments] = useState<CustomerShipment[]>([])
   const [shipmentStops, setShipmentStops] = useState<any[]>([])
-  const [profile, setProfile] = useState<{ full_name: string | null; company_name: string | null } | null>(null)
+  const [profile, setProfile] = useState<{ full_name: string | null; company_name: string | null } | null>(null)\n  const [preferences, setPreferences] = useState<{ email_enabled: boolean; eta_change_alerts: boolean; milestone_alerts: boolean; delay_alerts: boolean } | null>(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -94,19 +94,19 @@ export default function Account() {
     if (!session) {
       setOrders([])
       setShipments([])
-      setProfile(null)
+      setProfile(null)\n      setPreferences(null)
       return
     }
     let cancelled = false
     async function load() {
-      const [profileRes, ordersRes] = await Promise.all([
+      const [profileRes, ordersRes, preferencesRes] = await Promise.all([
         supabase.from('customers').select('full_name, company_name').eq('id', session!.user.id).single(),
         supabase.from('tracking_orders')
           .select('id, input_type, input_reference, package_code, status, amount_minor, currency, created_at')
           .order('created_at', { ascending: false }),
       ])
       if (cancelled) return
-      if (profileRes.data) setProfile(profileRes.data)
+      if (profileRes.data) setProfile(profileRes.data)\n      if (preferencesRes.data) setPreferences(preferencesRes.data)
       if (ordersRes.error) {
         setError(ordersRes.error.message)
         return
@@ -155,6 +155,19 @@ export default function Account() {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
       if (signInError) setError(signInError.message)
     }
+    setBusy(false)
+  }
+
+  async function savePreferences() {
+    if (!session || !preferences) return
+    setBusy(true)
+    setError('')
+    const { error: saveError } = await supabase.from('notification_preferences').update({
+      ...preferences,
+      updated_at: new Date().toISOString(),
+    }).eq('customer_id', session.user.id)
+    if (saveError) setError(saveError.message)
+    else setMessage('Notification preferences updated.')
     setBusy(false)
   }
 
@@ -272,6 +285,25 @@ export default function Account() {
 
         {error && <p style={{ color: 'var(--red)', fontSize: 13 }}>{error}</p>}
         {message && <p style={{ color: 'var(--teal)', fontSize: 13 }}>{message}</p>}
+        <section style={panel}>
+          <h2 style={{ fontSize: 17, marginTop: 0 }}>Email notifications</h2>
+          <p style={{ color: 'var(--muted)', fontSize: 13 }}>Choose which shipment updates you want to receive by email.</p>
+          {preferences && <div style={{ display: 'grid', gap: 10 }}>
+            {([
+              ['email_enabled', 'Enable email notifications'],
+              ['eta_change_alerts', 'ETA changes'],
+              ['milestone_alerts', 'Shipment milestones'],
+              ['delay_alerts', 'Delay alerts'],
+            ] as const).map(([key, label]) => (
+              <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13 }}>
+                <input type="checkbox" checked={preferences[key]} onChange={e => setPreferences(p => p ? { ...p, [key]: e.target.checked } : p)} />
+                {label}
+              </label>
+            ))}
+          </div>}
+          <button style={{ ...primary, marginTop: 12 }} disabled={busy || !preferences} onClick={savePreferences}>Save notification settings</button>
+        </section>
+
         <section style={panel}>
           <h2 style={{ fontSize: 17, marginTop: 0 }}>Profile details</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
