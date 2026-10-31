@@ -249,7 +249,7 @@ export default function Account() {
         </div>
         <button style={ghost} onClick={() => supabase.auth.signOut()}>Sign out</button>
       </header>
-      <main style={{ maxWidth: 1100, margin: '0 auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <main className="customer-content" style={{ maxWidth: 1100, margin: '0 auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
         <section style={panel}>
           <div style={{ color: 'var(--muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Account</div>
           <h2 style={{ fontSize: 18, margin: '6px 0' }}>{profile?.company_name || profile?.full_name || session.user.email}</h2>
