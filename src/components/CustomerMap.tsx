@@ -24,7 +24,7 @@ type Stop = { id: string; shipment_id: string; location: string; lat: number; ln
 function pin(color: string) {
   return L.divIcon({
     className: '',
-    html: `<span style="display:block;width:12px;height:12px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 1px 5px #0008"></span>`,
+    html: `<span style="display:block;width:12px;height:12px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 1px 5px #0008"></Fragment>`,
     iconSize: [16, 16],
     iconAnchor: [8, 8],
   })
@@ -99,7 +99,7 @@ export default function CustomerMap({ shipments, stops }: { shipments: ShipmentP
                   <Tooltip>{shipment.reference} · Destination: {shipment.destination_port || 'Destination'}</Tooltip>
                 </Marker>
               )}
-            </span>
+            </Fragment>
           )
         })}
       </MapContainer>
