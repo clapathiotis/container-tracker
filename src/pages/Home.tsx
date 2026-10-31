@@ -23,20 +23,34 @@ export default function Home() {
       <p style={{ color: 'var(--muted)', maxWidth: 420 }}>
         Open a tracking link from an email, or sign in to manage shipments.
       </p>
-      <Link
-        to="/admin"
-        style={{
-          marginTop: 8,
-          background: 'var(--teal)',
-          color: '#04140f',
-          padding: '10px 20px',
-          borderRadius: 8,
-          fontWeight: 600,
-          textDecoration: 'none',
-        }}
-      >
-        Admin sign in
-      </Link>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 }}>
+        <Link
+          to="/account"
+          style={{
+            background: 'var(--teal)',
+            color: '#04140f',
+            padding: '10px 20px',
+            borderRadius: 8,
+            fontWeight: 600,
+            textDecoration: 'none',
+          }}
+        >
+          Customer portal
+        </Link>
+        <Link
+          to="/admin"
+          style={{
+            border: '1px solid var(--line)',
+            color: 'var(--text)',
+            padding: '10px 20px',
+            borderRadius: 8,
+            fontWeight: 600,
+            textDecoration: 'none',
+          }}
+        >
+          Admin sign in
+        </Link>
+      </div>
     </div>
   )
 }
