@@ -62,7 +62,14 @@ const ghost: React.CSSProperties = {
   cursor: 'pointer',
 }
 
-function navigateToPortalSection(id: string) {\n  const target = document.getElementById(id)\n  if (!target) return\n  const top = target.getBoundingClientRect().top + window.scrollY - 76\n  window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })\n}\n\nexport default function Account() {
+function navigateToPortalSection(id: string) {
+  const target = document.getElementById(id)
+  if (!target) return
+  const top = target.getBoundingClientRect().top + window.scrollY - 76
+  window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+}
+
+export default function Account() {
   const [session, setSession] = useState<Session | null>(null)
   const [checking, setChecking] = useState(true)
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
